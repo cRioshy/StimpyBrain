@@ -1,14 +1,16 @@
 # Session handover
 
-- Date/time: 2026-07-26 18:36 CEST
-- Goal: build standalone phase-1 StimpyBrain from the approved Stimpy workflow concepts without merging old Pandorick code.
-- Work completed: created passive adapter/store/memory/learning/graph/API; hardened exact observe-only workflow; added terminal-only SQLite audit, idempotency, sanitizer and tests.
-- Changed files: all files currently tracked in this new standalone project.
-- New files: `stimpy/`, `tests/`, `docs/`, `README.md`, `AGENTS.md`, `.env.example`, `.gitignore`.
-- Commands executed: project file inspection; Python `compileall`; Python `unittest discover -v`; backup verification commands (see final task report).
-- Backup evidence: BEFORE `C:\Users\Admin\Desktop\StimpyBackUp_2026-07-26_18-21-21_BEFORE.zip`, 393715 bytes, 160 readable entries, SHA-256 `6773DDAB3E4CE7CFC77BD45C1D159092B75E7CFC191C11C5F1D7647A4993D2F5` (source ZIP had no `.git`). Final AFTER target: `C:\Users\Admin\Desktop\StimpyBrainBackUp_2026-07-26_18-40-00_AFTER_FINAL.zip`, including `.git`; verify its final size/hash in the task report.
-- Tests/results: first run exposed export, Windows connection cleanup, and correlation-sequence issues; corrected. Final `compileall` succeeded and `unittest discover -v` ran 17 tests in 1.107 seconds: all passed (`OK`), including timeout and cancellation terminal-state tests.
-- Known errors: see `docs/KNOWN_PROBLEMS.md`; no active runtime defect known after the last passing suite.
-- Architecture decisions: standalone project; one-way future integration; append-only observations; repeated observation correlation IDs allowed for sequences; workflow IDs/event IDs enforced as documented; no durable RUNNING state; no live/paper execution.
-- Not completed: active Pandorick connection intentionally excluded; network API and production operations excluded.
-- Exact next step: review and agree the versioned, one-way Pandorick event envelope before implementing any connection; keep the connection inactive until explicit approval.
+- Date/time: 2026-07-26 19:55 CEST.
+- Goal: implement StimpyBrain Phase 2 as a passive read-only Pandorick observer and prepare isolated private GitHub publication.
+- Work: created verified GET-only transport, normalizer, JSONL/SQLite store v2, persistent dedupe, memory/learning, shadow workflow connection, graph, local API, controlled worker, tests and complete documentation.
+- Changed files: `.env.example`, `.gitignore`, `AGENTS.md`, `README.md`, existing `docs/*`, configuration/models/adapter/store/memory/learning/workflow/graph/API.
+- New files: `stimpy/http_client.py`, `normalizer.py`, `events.py`, `worker.py`, `app.py`, `__main__.py`, `tests/test_phase2.py`, and five Phase-2 documents.
+- Commands: backup creation/list/hash; required documentation reads; `rg`; local Pandorick GET probes; Python compile/tests; Git/GitHub diagnostics.
+- Tests: `python -m compileall -q stimpy tests` passed. The first targeted run exposed one open SQLite handle on corrupt-database failure; fixed. A later full run exposed simultaneous worker/stop writes to `worker.tmp`; fixed with a state-write lock. Two consecutive final `unittest discover` runs each passed all 29 tests in 4.664 and 4.647 seconds. `git diff --check` passed (only expected Windows LF/CRLF notices).
+- Architecture decisions: GET-only loopback transport; connection opt-in; no invented endpoint; JSONL payload plus SQLite metadata; process-local singleton; causal claims forbidden; workflow rejection on missing strict inputs.
+- Known errors: see `KNOWN_PROBLEMS.md`. Slow Pandorick learning/graph endpoints excluded; no outcome endpoint. GitHub CLI account `cRioshy` is active but its token is invalid; the GitHub app confirms login `cRioshy` but lists no accessible repository and cannot create one.
+- Not completed: private GitHub repository creation, remote, push and Draft PR are blocked pending `gh auth login -h github.com`. No fallback to Pando is permitted.
+- BEFORE backup: `C:\Users\Admin\Desktop\StimpyBackUp_2026-07-26_19-41-48_BEFORE.zip`, 93,524 bytes, 157 entries, readable, `.git` included, SHA-256 `18F4661675CEDE2B46692F275F9C2A006A47B1A17A8E7122FCEC37F6F5CDAEB1`.
+- AFTER backup: `C:\Users\Admin\Desktop\StimpyBackUp_2026-07-26_19-56-27_AFTER.zip`, 112,069 bytes, 168 entries, readable, `.git` and Phase-2 docs included, SHA-256 `7450106533BEB84772DF7D7A73AC51D5457A70366952E268DCB9C456C8A2BC4E`.
+- Local publication: default branch renamed to `main`; development branch `agent/stimpy-phase2-read-only-observer` created; all scoped StimpyBrain files committed with message `Implement StimpyBrain phase 2 read-only observer`. The working tree was clean and no remote was configured. Resolve the final amended commit ID with `git log -1`.
+- Exact next safe step: run `gh auth login -h github.com`, verify/create private `cRioshy/StimpyBrain`, add only that remote, push the development branch, and open the required Draft PR against `main`.
