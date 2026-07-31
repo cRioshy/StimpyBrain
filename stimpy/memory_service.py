@@ -23,3 +23,10 @@ class MemoryService:
     def process_recent(self,limit=100): return [self.update_from_observation(row) for row in reversed(self.store.list(limit))]
     def snapshot(self,limit=100,offset=0):
         rows=self.store.list_memories(limit,offset); return {"count":self.store.count("memories"),"items":rows,"causal_claims":0}
+
+class Memory:
+    """Observation-memory facade backed by the existing JSONL/SQLite store."""
+    def __init__(self,store): self.store=store
+    def remember(self,observation): return self.store.append(observation)[0]
+    def exists(self,observation_id): return self.store.exists(observation_id)
+    def load_recent(self,limit=100): return self.store.load_recent(limit)

@@ -4,7 +4,7 @@ import json,os,sqlite3
 from datetime import UTC,datetime
 from pathlib import Path
 from threading import RLock
-from .models import MemoryRecord,Observation
+from .models import KnowledgeEntry,KnowledgeStatus,MemoryRecord,Observation,parse_timestamp
 
 SCHEMA="""
 CREATE TABLE IF NOT EXISTS stimpy_schema_migrations(version INTEGER PRIMARY KEY,applied_at TEXT NOT NULL);
@@ -25,6 +25,11 @@ CREATE TABLE IF NOT EXISTS memories(
  status TEXT NOT NULL CHECK(status IN ('OBSERVED','REPEATED','PROVISIONAL','SUPPORTED','CONTRADICTED','ARCHIVED')),
  last_verified_at TEXT NOT NULL,content TEXT NOT NULL,schema_version INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS workflow_results(id TEXT PRIMARY KEY,observation_id TEXT NOT NULL UNIQUE,status TEXT NOT NULL,reasons TEXT NOT NULL,gates TEXT NOT NULL,created_at TEXT NOT NULL,FOREIGN KEY(observation_id) REFERENCES observations(observation_id));
+CREATE TABLE IF NOT EXISTS knowledge_entries(
+ knowledge_id TEXT PRIMARY KEY,observation_id TEXT NOT NULL UNIQUE,symbol TEXT NOT NULL,decision TEXT NOT NULL,
+ evidence_score INTEGER NOT NULL,reasons TEXT NOT NULL,counterarguments TEXT NOT NULL,critic_issues TEXT NOT NULL,
+ status TEXT NOT NULL CHECK(status IN ('OBSERVED','PROVISIONAL','SUPPORTED','CONTRADICTED')),
+ created_at TEXT NOT NULL,schema_version INTEGER NOT NULL,FOREIGN KEY(observation_id) REFERENCES observations(observation_id));
 """
 class ObservationStore:
     def __init__(self,database_path,data_dir=None,rotation_bytes=134217728):
@@ -44,7 +49,10 @@ class ObservationStore:
             if existing and "observation_id" not in existing:
                 self._db.execute("ALTER TABLE observations RENAME TO observations_v1_legacy")
             self._db.executescript(SCHEMA)
-            self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(2,datetime.now(UTC).isoformat()))
+            columns={r[1] for r in self._db.execute("PRAGMA table_info(observations)")}
+            for name,kind in (("decision","TEXT"),("confidence","REAL"),("outcome","TEXT"),("profit","REAL")):
+                if name not in columns: self._db.execute(f"ALTER TABLE observations ADD COLUMN {name} {kind}")
+            self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(3,datetime.now(UTC).isoformat()))
     @property
     def foreign_keys_enabled(self): return bool(self._db.execute("PRAGMA foreign_keys").fetchone()[0])
     @property
@@ -64,11 +72,11 @@ class ObservationStore:
         with self._lock:
             reason=self.duplicate_reason(o)
             if reason: return False,reason
-            record={"observation_id":o.observation_id,"event_id":o.event_id,"correlation_id":o.correlation_id,"source":o.source,"source_endpoint":o.source_endpoint,"source_type":o.source_type,"observed_at":o.observed_at.isoformat(),"source_timestamp":o.source_timestamp.isoformat(),"symbol":o.symbol,"market":o.market,"payload":o.payload,"content_hash":o.content_hash,"schema_version":o.schema_version}
+            record={"observation_id":o.observation_id,"event_id":o.event_id,"correlation_id":o.correlation_id,"source":o.source,"source_endpoint":o.source_endpoint,"source_type":o.source_type,"observed_at":o.observed_at.isoformat(),"source_timestamp":o.source_timestamp.isoformat(),"symbol":o.symbol,"market":o.market,"payload":o.payload,"content_hash":o.content_hash,"schema_version":o.schema_version,"decision":o.decision,"confidence":o.confidence,"outcome":o.outcome,"profit":o.profit}
             line=(json.dumps(record,sort_keys=True,ensure_ascii=True,allow_nan=False,separators=(",",":"))+"\n").encode(); path=self._segment(len(line)); offset=path.stat().st_size if path.exists() else 0
             with path.open("ab") as handle: handle.write(line); handle.flush(); os.fsync(handle.fileno())
             try:
-                with self._db: self._db.execute("INSERT INTO observations VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(o.observation_id,o.event_id,o.correlation_id,o.source,o.source_endpoint,o.source_type,o.observed_at.isoformat(),o.source_timestamp.isoformat(),o.symbol,o.market,o.content_hash,o.schema_version,path.name,offset,len(line),"STORED",datetime.now(UTC).isoformat()))
+                with self._db: self._db.execute("""INSERT INTO observations(observation_id,event_id,correlation_id,source,source_endpoint,source_type,observed_at,source_timestamp,symbol,market,content_hash,schema_version,jsonl_file,byte_offset,payload_size,processing_status,created_at,decision,confidence,outcome,profit) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",(o.observation_id,o.event_id,o.correlation_id,o.source,o.source_endpoint,o.source_type,o.observed_at.isoformat(),o.source_timestamp.isoformat(),o.symbol,o.market,o.content_hash,o.schema_version,path.name,offset,len(line),"STORED",datetime.now(UTC).isoformat(),o.decision,o.confidence,o.outcome,o.profit))
             except sqlite3.IntegrityError: return False,"concurrent_duplicate"
             return True,None
     def _read_payload(self,row):
@@ -82,8 +90,16 @@ class ObservationStore:
         with self._lock:
             rows=self._db.execute("SELECT * FROM observations ORDER BY created_at DESC LIMIT ? OFFSET ?",(limit,offset)).fetchall()
             return [{**dict(r),"payload":self._read_payload(r)} for r in rows]
+    def exists(self,observation_id):
+        with self._lock: return self._db.execute("SELECT 1 FROM observations WHERE observation_id=?",(observation_id,)).fetchone() is not None
+    def load_recent(self,limit=100):
+        return [Observation(
+            row["observation_id"],row["event_id"],row["correlation_id"],row["source"],row["source_endpoint"],row["source_type"],
+            parse_timestamp(row["observed_at"]),parse_timestamp(row["source_timestamp"]),row["symbol"],row["market"],row["payload"],
+            row["content_hash"],int(row["schema_version"]),row.get("decision"),row.get("confidence"),row.get("outcome"),row.get("profit"))
+            for row in self.list(limit)]
     def count(self,table="observations"):
-        if table not in {"observations","memories","workflow_results"}: raise ValueError("invalid table")
+        if table not in {"observations","memories","workflow_results","knowledge_entries"}: raise ValueError("invalid table")
         return int(self._db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
     def upsert_memory(self,m:MemoryRecord):
         with self._lock,self._db:
@@ -97,6 +113,19 @@ class ObservationStore:
     def save_workflow_result(self,result_id,observation_id,status,reasons,gates):
         with self._lock,self._db: self._db.execute("INSERT OR IGNORE INTO workflow_results VALUES(?,?,?,?,?,?)",(result_id,observation_id,status,json.dumps(reasons),json.dumps(gates),datetime.now(UTC).isoformat()))
     def list_workflow_results(self,limit=100,offset=0): return [dict(r) for r in self._db.execute("SELECT * FROM workflow_results ORDER BY created_at DESC LIMIT ? OFFSET ?",(max(1,min(limit,1000)),max(0,offset))).fetchall()]
+    def save_knowledge(self,entry:KnowledgeEntry):
+        with self._lock,self._db:
+            self._db.execute("INSERT OR IGNORE INTO knowledge_entries VALUES(?,?,?,?,?,?,?,?,?,?,?)",(entry.knowledge_id,entry.observation_id,entry.symbol,entry.decision,entry.evidence_score,json.dumps(entry.reasons),json.dumps(entry.counterarguments),json.dumps(entry.critic_issues),entry.status.value,entry.created_at.isoformat(),entry.schema_version))
+        return self.get_knowledge(entry.knowledge_id)
+    def get_knowledge(self,knowledge_id):
+        row=self._db.execute("SELECT * FROM knowledge_entries WHERE knowledge_id=?",(knowledge_id,)).fetchone()
+        return self._knowledge_from_row(row) if row else None
+    def load_knowledge(self):
+        rows=self._db.execute("SELECT * FROM knowledge_entries ORDER BY created_at ASC").fetchall()
+        return [self._knowledge_from_row(row) for row in rows]
+    @staticmethod
+    def _knowledge_from_row(row):
+        return KnowledgeEntry(row["knowledge_id"],row["observation_id"],row["symbol"],row["decision"],int(row["evidence_score"]),tuple(json.loads(row["reasons"])),tuple(json.loads(row["counterarguments"])),tuple(json.loads(row["critic_issues"])),KnowledgeStatus(row["status"]),parse_timestamp(row["created_at"]),int(row["schema_version"]))
     def validate_jsonl(self,path):
         valid=[]; corrupt=[]
         with Path(path).open("rb") as handle:

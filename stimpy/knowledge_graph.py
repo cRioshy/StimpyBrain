@@ -1,4 +1,16 @@
-"""Small stable architecture graph; raw observations are intentionally excluded."""
+"""Stable architecture graph and SQLite-backed provisional knowledge entries."""
+import hashlib
+from .models import KnowledgeEntry,KnowledgeStatus,utc_now
+
+class KnowledgeGraph:
+    def __init__(self,store): self.store=store
+    def update(self,observation,reasoning,critic):
+        knowledge_id=hashlib.sha256(f"knowledge|{observation.observation_id}".encode()).hexdigest()
+        status=KnowledgeStatus.PROVISIONAL if reasoning.evidence_score>0 and critic.severity!="HIGH" else KnowledgeStatus.OBSERVED
+        candidate=KnowledgeEntry(knowledge_id,observation.observation_id,observation.symbol,observation.decision,reasoning.evidence_score,reasoning.reasons,reasoning.counterarguments,critic.issues,status,utc_now(),1)
+        return self.store.save_knowledge(candidate)
+    def load_all(self): return self.store.load_knowledge()
+
 def build_graph():
     nodes=[
       {"id":"stimpy","label":"StimpyBrain","group":"stimpy","importance":1.0},
