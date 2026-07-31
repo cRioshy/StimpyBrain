@@ -1,9 +1,12 @@
 # Next steps
 
-1. Agree a versioned, one-way Pandorick event envelope and transport without modifying Pandorick.
-2. Add contract fixtures for every allowlisted topic, including outcomes and malformed payloads.
-3. Design authenticated read-only HTTP endpoints only if a network API is actually required.
-4. Define backup, retention, and explicit SQLite migration procedures before production data.
-5. Add load and process-crash recovery tests; keep live trading technically impossible.
+Completed: GET-only Pandorick client, verified endpoint allowlist, versioned normalizer, stable IDs/hashes, persistent deduplication, rotating JSONL and SQLite index, evidence memory, descriptive learning, internal shadow workflow, architecture graph, local GET-only API, worker lifecycle and Phase-2 test suite. Also completed: isolated local Observer/Memory/Evidence/Reasoning/Self-Critic/Knowledge prototype, simulated demo, SQLite schema v3 and its test suite.
 
-Completed: standalone structure, strict workflow topology, terminal-only persistence, sanitizer, observation memory/learning projections, knowledge graph, read-only facade, and initial safety tests.
+Next safe steps:
+
+1. Design persistent `IncubationRequest` storage and an explicitly triggered, testable reactivation scheduler; do not connect it automatically.
+2. Define cross-observation aggregation rules and minimum independent evidence counts before allowing knowledge promotion beyond `PROVISIONAL`.
+3. Calibrate Evidence thresholds only against a reviewed, immutable offline dataset and keep score distinct from probability.
+4. Review this implementation and explicitly approve activation before setting `STIMPY_PANDORICK_ENABLED=true`.
+5. Add a cross-process singleton lock and orphan-JSONL reconciliation.
+6. Ask the Pando project separately for a bounded read-only outcome endpoint if outcome ingestion is required; do not modify Pando from Stimpy work.

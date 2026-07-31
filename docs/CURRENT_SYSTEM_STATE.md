@@ -1,33 +1,41 @@
 # Current system state
 
-## Goal and safety boundary
+Date: 2026-07-31. StimpyBrain is a standalone Python service. Composition occurs in `stimpy/app.py`; importing it starts nothing. `python -m stimpy` starts a local GET-only API and one controlled worker. The Pandorick poller is installed but disabled by default. A separate local reasoning prototype can process caller-supplied simulated records and is not wired into that worker.
 
-StimpyBrain is a standalone passive observer, append-only memory, descriptive learner, workflow safety gate, knowledge graph projection, and read-only in-process API. It has no active Pandorick connection, broker adapter, Telegram sender, order function, or configuration for live mode.
+## Architecture and services
 
-## Architecture and data flow
+Verified Pandorick Rick API GET envelopes flow through `ReadOnlyHttpClient -> ObservationAdapter -> ObservationNormalizer -> ObservationStore`. The store appends sanitized raw records to rotating JSONL and maintains a synchronized SQLite index. New records feed evidence-counted Memory, descriptive Learning and the internal observe-only Workflow Gate. The architecture Knowledge Graph and local HTTP API expose bounded projections.
 
-`Pandorick (future read-only event copy) -> ObservationAdapter -> ObservationStore (SQLite) -> MemoryService -> LearningService -> KnowledgeGraph -> ReadOnlyAPI`.
+The isolated prototype flows through `Observer -> Memory facade -> EvidenceEngine -> ReasoningEngine -> SelfCritic -> KnowledgeGraph`. It reuses the same JSONL/SQLite store; knowledge entries are kept in SQLite rather than a competing JSON file. It performs transparent rules only and cannot create an order, contact Pandorick, use a broker or send Telegram.
 
-Separately, copied market observations may pass through the exact workflow topology `DataQuality -> Features -> Prediction -> MomentumGate -> RiskGate -> DecisionGate -> optional PaperSimulation`. Mode is always `observe`; the decision is prefixed `OBSERVE_`; order count is always zero; paper simulation is disabled.
+Active only when started: Stimpy worker and local API. Pandorick polling additionally requires `STIMPY_PANDORICK_ENABLED=true`; its default is false. There are no broker, order, Telegram or Pandorick-write components.
 
-## Components and entry points
+## Entry points and data flow
 
-- `stimpy/observation_adapter.py`: allowlist and boundary validation; invoked explicitly, no subscriber loop.
-- `stimpy/observation_store.py`: synchronized append-only SQLite observations.
-- `stimpy/workflow_service.py`: default safe workflow facade.
-- `stimpy/memory_service.py`: counts, symbol/topic relations, correlation sequences and contradictions.
-- `stimpy/learning_service.py`: descriptive snapshot only; no model mutation.
-- `stimpy/knowledge_graph.py`: StimpyBrain cluster projection.
-- `stimpy/api.py`: read-only in-process queries; no write routes/server.
+- `python -m stimpy`: controlled start/stop.
+- `stimpy/app.py`: dependency composition.
+- `stimpy/http_client.py`: local GET-only transport with timeout/retry/backoff.
+- `stimpy/normalizer.py`: schema, timestamps, stable IDs/hashes, limits and redaction.
+- `stimpy/observer.py`: strict normalization of caller-supplied prototype payloads.
+- `stimpy/observation_store.py`: rotating JSONL and SQLite schema v3.
+- `stimpy/evidence.py`, `reasoning.py`, `self_critic.py`: pure heuristic analysis.
+- `stimpy/prototype.py`: isolated prototype orchestration and future Incubation protocol.
+- `stimpy/demo_reasoning_prototype.py`: temporary, simulated local demo.
+- `stimpy/worker.py`: single in-process instance, atomic state and bounded shutdown.
+- `stimpy/api.py`: nine bounded GET endpoints; all write methods return 405.
 
-## Persistence and controls
+## Workflow, learning and history
 
-SQLite uses foreign keys, integrity check, synchronized writes, unique event IDs, terminal-only workflow statuses, atomic workflow audits, sanitizer redaction/hashing/previews, and migration version 1. Workflow event and correlation IDs are idempotent. Observation correlation IDs may repeat intentionally to represent a sequence; event IDs remain unique.
+Workflow topology remains exactly `DataQuality -> Features -> Prediction -> MomentumGate -> RiskGate -> DecisionGate`, optionally followed only by disabled `PaperSimulation`. Only terminal states persist. Phase-2 decisions without strict price fields are internally rejected as insufficient data rather than bypassing DataQuality. Results never leave Stimpy.
 
-## Commands
+Memory records store subject/relation/object, source observation IDs, evidence and contradiction counts, bounded confidence, status and `causal=false`. Learning only aggregates patterns; model updates and causal claims remain zero. Prototype reasoning separates the caller's confidence from a bounded reasoning confidence, exposes counterarguments and uncertainty, and explicitly rejects causal/trading conclusions from a single case. Self Critic outputs hypotheses only.
 
-No long-running service exists yet. Tests: `python -m compileall -q stimpy tests` and `python -m unittest discover -v` from the project root.
+## Storage and commands
+
+`stimpy_data/{observations,memory,state,database,logs}` is local and Git-ignored. Observations use rotating append-only JSONL plus SQLite metadata offsets. Prototype knowledge uses the `knowledge_entries` table. SQLite foreign keys are enabled and Stimpy schema migration is version 3. Tests: `python -m compileall -q stimpy tests`; `python -m unittest discover -s tests -v`. Demo: `python -m stimpy.demo_reasoning_prototype`.
 
 ## Risks
 
-No authenticated HTTP API, retention policy, real Pandorick event-schema contract, or production migration tooling exists. The deterministic prediction is a placeholder and must not be interpreted as trading advice.
+Pandorick `/api/v1/learning/summary` and `/api/v1/graph/overview` timed out during verification and are excluded from polling. No outcome-recent endpoint exists. Authentication is not implemented in Stimpy’s local API, so it must remain loopback-only. The worker singleton is process-local, not a cross-process OS lock. See `KNOWN_PROBLEMS.md`.
+
+The prototype has no cross-observation pattern aggregation or implemented incubation scheduler. Its rules and thresholds are illustrative, not calibrated probabilities.
