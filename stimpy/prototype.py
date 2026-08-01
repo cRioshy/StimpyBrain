@@ -19,6 +19,8 @@ class StimpyPrototypeService:
         self.reasoning=reasoning or ReasoningEngine(); self.critic=critic or SelfCritic(); self.knowledge=knowledge or KnowledgeGraph(store)
     def process(self,decision):
         observation=self.observer.receive(decision); stored=self.memory.remember(observation)
-        evidence=self.evidence.evaluate(observation); reasoning=self.reasoning.think(observation,evidence); critic=self.critic.analyse(observation)
+        evidence=self.memory.store.save_evidence(self.evidence.evaluate(observation))
+        reasoning=self.memory.store.save_reasoning(self.reasoning.think(observation,evidence))
+        critic=self.memory.store.save_critic(self.critic.analyse(observation,reasoning))
         knowledge=self.knowledge.update(observation,reasoning,critic)
         return PrototypeResult(observation,stored,evidence,reasoning,critic,knowledge)

@@ -15,7 +15,7 @@ flowchart LR
     WK[Single Worker] --> A
     subgraph RP["Isolated local reasoning prototype"]
       PO["Local payload"] --> O[Observer] --> PM["Memory facade"]
-      PM --> E["Evidence rules"] --> RE["Non-causal reasoning"] --> SC["Self Critic"] --> KG["Provisional Knowledge Store"]
+      PM --> E["Persisted Evidence"] --> RE["Persisted non-causal reasoning"] --> SC["Persisted Self Critic"] --> KG["Provisional Knowledge Store"]
     end
     PM --> J
     PM --> DB
@@ -27,4 +27,4 @@ flowchart LR
 
 There is no edge from Stimpy back to Pandorick. The HTTP client exposes GET only and accepts loopback HTTP base URLs only. Raw observation nodes are not added to the architecture graph.
 
-The prototype is deliberately not connected to the worker, HTTP polling, broker, Telegram or any order path. Its `IncubationPort` is only a typed future boundary; there is no scheduler or automatic reactivation.
+The prototype is deliberately not connected to the worker, HTTP polling, broker, Telegram or any order path. Evidence, Reasoning and Critic records are immutable-by-ID SQLite projections linked to one observation. Its `IncubationPort` is only a typed future boundary; there is no scheduler or automatic reactivation.

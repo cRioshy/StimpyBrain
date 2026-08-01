@@ -24,13 +24,13 @@ This is a small, deterministic foundation for observation memory, evidence, reas
 
 No parallel `memory.py` file store or `knowledge.json` exists. `Memory` is a facade in the existing `memory_service.py`, backed by `ObservationStore`. Every accepted observation is appended as one complete UTF-8 JSONL line with flush/fsync and indexed in SQLite. Duplicate observation IDs return `False`. Recent observations are reconstructed as typed objects.
 
-SQLite schema v3 adds nullable prototype columns to the observation index and a `knowledge_entries` table. Existing generic Phase-2 observations remain valid. Knowledge insertion uses `INSERT OR IGNORE`, so an existing entry is not silently overwritten.
+SQLite schema v4 retains the nullable prototype columns and adds idempotent `evidence_results`, `reasoning_results` and `critic_results` tables. Knowledge rows link to stable reasoning and critic IDs. Existing generic Phase-2 observations remain valid. Inserts use stable identities and do not silently overwrite prior analysis.
 
 ## Evidence and reasoning
 
 Default Evidence rules are centrally configured in `EvidenceRules`: confidence above `0.8` adds 2, positive profit adds 3, `WIN` adds 2, `LOSS` subtracts 3, and high confidence combined with `LOSS` subtracts another 2. `UNKNOWN` adds nothing. Normalization only maps the configured score range to `[0, 1]`; it is not a win probability.
 
-Reasoning carries supporting factors forward, always states that one observation cannot establish causality, adds low-evidence and possible confidence-overweighting counterarguments where relevant, and exposes uncertainty. Conclusions are observational and never orders or advice.
+Reasoning carries supporting factors forward, always states that one observation cannot establish causality, adds low-evidence and possible confidence-overweighting counterarguments where relevant, and exposes assumptions, missing information and uncertainty. Conclusions are observational and never orders or advice.
 
 Self Critic checks possible high-confidence miscalibration, large negative profit, profit/outcome inconsistency and non-final outcomes. Its wording remains hypothetical. A single knowledge entry can only be `OBSERVED` or `PROVISIONAL`; `SUPPORTED` requires a future independent multi-observation design.
 

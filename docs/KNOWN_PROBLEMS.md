@@ -10,3 +10,5 @@
 - `KP-RP-002`: knowledge entries represent individual observations only; cross-observation support/contradiction promotion is not implemented, so the prototype never produces `SUPPORTED`.
 - `KP-RP-003`: incubation is a typed interface only. Persistence, scheduling, reactivation and comparison do not yet exist.
 - `KP-RP-004`: a caller that omits both an upstream observation ID and timestamp receives a content-stable ID; repeated identical content is intentionally treated as a duplicate.
+- `KP-A2-001`: Foundation result IDs are stable and persisted, but the isolated prototype is intentionally not connected to the worker. Automatic processing requires a separate reviewed integration phase.
+- `KP-A2-002`: Evidence quality currently distinguishes final from unresolved outcomes only. Broader source-quality, freshness and comparable-case calibration are future offline work.

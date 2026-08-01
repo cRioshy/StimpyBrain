@@ -1,19 +1,15 @@
 # Session handover
 
-- Date/time: 2026-07-31 20:04 CEST.
-- Goal: add an isolated, deterministic Stimpy learning/reflection prototype and publish it as a Draft PR without changing Pando.
-- Work performed: inspected the actual Phase-2 architecture; extended frozen domain models; added strict local Observer, existing-store Memory facade, configurable Evidence rules, non-causal Reasoning, hypothesis-only Self Critic, SQLite-backed provisional Knowledge entries, PrototypeService, typed Incubation boundary and simulated demo.
-- Changed files: `README.md`, `stimpy/models.py`, `stimpy/observation_store.py`, `stimpy/memory_service.py`, `stimpy/knowledge_graph.py`, `tests/test_phase2.py`, and all required state/architecture/problem/next-step/handover documents.
-- New files: `stimpy/observer.py`, `stimpy/evidence.py`, `stimpy/reasoning.py`, `stimpy/self_critic.py`, `stimpy/prototype.py`, `stimpy/demo_reasoning_prototype.py`, `tests/test_reasoning_prototype.py`, `docs/STIMPY_REASONING_PROTOTYPE.md`.
-- Commands: required document/code reads; controlled PowerShell staging/`Compress-Archive` plus .NET ZIP validation/test extraction; targeted/full `unittest`; simulated demo; `compileall`; `rg`; Git status/diff checks; `gh auth status`; `gh repo view`; branch creation; explicit staging; commits; Git push; Draft-PR creation and verification.
-- Tests executed: bundled Python `-m unittest tests.test_reasoning_prototype -v`; bundled Python `-m unittest discover -s tests -v`; bundled Python `-m stimpy.demo_reasoning_prototype`.
-- Actual results: 11/11 targeted tests passed in 2.833s; full suite passed 40/40 in 10.257s and again 40/40 in 9.483s; compileall and diff check exited 0; demo exited 0 with Evidence score 7, provisional single-case semantics, uncertainty 0.25 and no market connection.
-- Known errors: see `KNOWN_PROBLEMS.md`; existing Phase-2 risks remain. Prototype thresholds are uncalibrated, knowledge does not aggregate across observations, and incubation is interface-only.
-- Architecture decisions: reuse rotating JSONL/SQLite rather than create competing `observations.jsonl`/`knowledge.json`; migrate SQLite index to v3; retain all existing public APIs; keep prototype out of worker/app; one observation can never become `SUPPORTED`; no causal or trading conclusions.
-- Publication: implementation commit `618fb8823ba184112d729315d9c4c8f173a70ae3` has the required message `Add Stimpy reasoning and self-critic prototype`. Branch `agent/stimpy-reasoning-prototype` was pushed only to `origin=https://github.com/cRioshy/StimpyBrain.git`. Draft PR #2 targets `main`: `https://github.com/cRioshy/StimpyBrain/pull/2`. It is open, remains Draft and was not merged. This final handover is a separate documentation-only follow-up commit because the required work order places handover after PR creation.
-- Publication diagnostics: the GitHub app could not see the private repository and returned 404, so the documented `gh` fallback was used. The first elevated Git push/PR attempts lacked safe-directory/Git PATH context; process-local configuration fixed both without changing global Git settings.
-- Not completed: Incubation persistence/scheduling, independent multi-observation knowledge aggregation and statistical Evidence calibration are intentionally future work.
-- BEFORE backup: `C:\Users\Admin\Desktop\StimpyBackUp_2026-07-31_19-49-14_BEFORE.zip`, 137,545 bytes, 159 entries; .NET open/list and test extraction passed; `.git`, docs, tests and `AGENTS.md` included.
-- AFTER backup: final archive is `C:\Users\Admin\Desktop\StimpyBackUp_2026-07-31_20-04-50_AFTER.zip`; controlled staging must include `.git`, docs, tests, `AGENTS.md` and the prototype and must pass .NET open/list plus test extraction before the task is considered complete.
-- Pando boundary: no Pando, PandorickKi, Rick or other repository was read for implementation, edited, staged, committed or pushed. No orders, broker calls, Telegram code, live trading, Pandorick writes, neural training or self-modifying code were added.
-- Exact next safe step: review Draft PR #2. If approved later, design persistent Incubation requests and explicit reactivation semantics in a new task before implementing any scheduler; do not merge or activate Pandorick polling automatically.
+- Date/time: 2026-08-01 CEST.
+- Goal: complete Stimpy Foundation hardening (Phase A.2) without connecting the isolated reasoning prototype to the worker or Pandorick.
+- Starting point: branch `agent/stimpy-reasoning-prototype`, commit `8435543`; baseline compile succeeded and 40/40 tests passed.
+- Implemented: stable IDs and schema validation for Evidence, Reasoning and Critic; `CANCELLED` outcome; complete critic severity vocabulary; Evidence quality score; Reasoning assumptions and missing information; Self-Critic calibration warning; SQLite schema v4 persistence; Knowledge links; idempotent reprocessing; three bounded GET-only API projections.
+- Storage: new `evidence_results`, `reasoning_results` and `critic_results` tables; `knowledge_entries` gains reasoning/critic links. Existing JSONL observation storage and schema migration behavior remain in place.
+- Tests: targeted Foundation suite passed 12/12; full suite passed 41/41; `compileall` and simulated local demo succeeded.
+- Safety: no Pandorick write, broker, order, Telegram, live-trading, automatic model update or worker integration was added. Pandorick polling remains disabled by default.
+- Documentation: state, architecture, API, data model, security boundaries, known problems, next steps and Foundation-specific documentation updated; master plan added.
+- Not implemented: Incubation persistence/reactivation, multi-observation Pattern Learning, Hypothesis Engine, Strategy Lab, Insight Generator, worker integration and Ren.
+- BEFORE backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-01_21-36-25_BEFORE.zip`; 188,772 bytes and 194 entries; archive open and test extraction passed.
+- AFTER backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-01_21-46-46_AFTER.zip`; 194,860 bytes and 201 entries; controlled archive validation and test extraction passed.
+- Publication: GitHub CLI authentication was restored for `cRioshy`; implementation commit, push and Draft PR are completed in the final publication steps and reported in the final response.
+- Exact next safe step: implement persistent, explicitly triggered and idempotent `IncubationTask` reactivation in a separate reviewed phase; do not connect it automatically to the worker.

@@ -1,12 +1,12 @@
 # Current system state
 
-Date: 2026-07-31. StimpyBrain is a standalone Python service. Composition occurs in `stimpy/app.py`; importing it starts nothing. `python -m stimpy` starts a local GET-only API and one controlled worker. The Pandorick poller is installed but disabled by default. A separate local reasoning prototype can process caller-supplied simulated records and is not wired into that worker.
+Date: 2026-08-01. StimpyBrain is a standalone Python service. Composition occurs in `stimpy/app.py`; importing it starts nothing. `python -m stimpy` starts a local GET-only API and one controlled worker. The Pandorick poller is installed but disabled by default. A separate local reasoning prototype can process caller-supplied simulated records and is not wired into that worker.
 
 ## Architecture and services
 
 Verified Pandorick Rick API GET envelopes flow through `ReadOnlyHttpClient -> ObservationAdapter -> ObservationNormalizer -> ObservationStore`. The store appends sanitized raw records to rotating JSONL and maintains a synchronized SQLite index. New records feed evidence-counted Memory, descriptive Learning and the internal observe-only Workflow Gate. The architecture Knowledge Graph and local HTTP API expose bounded projections.
 
-The isolated prototype flows through `Observer -> Memory facade -> EvidenceEngine -> ReasoningEngine -> SelfCritic -> KnowledgeGraph`. It reuses the same JSONL/SQLite store; knowledge entries are kept in SQLite rather than a competing JSON file. It performs transparent rules only and cannot create an order, contact Pandorick, use a broker or send Telegram.
+The isolated prototype flows through `Observer -> Memory facade -> EvidenceEngine -> ReasoningEngine -> SelfCritic -> KnowledgeGraph`. It reuses the same JSONL/SQLite store. Evidence, Reasoning, Critic and Knowledge results have stable IDs and are stored idempotently in SQLite schema v4 rather than competing JSON files. It performs transparent rules only and cannot create an order, contact Pandorick, use a broker or send Telegram.
 
 Active only when started: Stimpy worker and local API. Pandorick polling additionally requires `STIMPY_PANDORICK_ENABLED=true`; its default is false. There are no broker, order, Telegram or Pandorick-write components.
 
@@ -17,22 +17,22 @@ Active only when started: Stimpy worker and local API. Pandorick polling additio
 - `stimpy/http_client.py`: local GET-only transport with timeout/retry/backoff.
 - `stimpy/normalizer.py`: schema, timestamps, stable IDs/hashes, limits and redaction.
 - `stimpy/observer.py`: strict normalization of caller-supplied prototype payloads.
-- `stimpy/observation_store.py`: rotating JSONL and SQLite schema v3.
+- `stimpy/observation_store.py`: rotating JSONL and SQLite schema v4.
 - `stimpy/evidence.py`, `reasoning.py`, `self_critic.py`: pure heuristic analysis.
 - `stimpy/prototype.py`: isolated prototype orchestration and future Incubation protocol.
 - `stimpy/demo_reasoning_prototype.py`: temporary, simulated local demo.
 - `stimpy/worker.py`: single in-process instance, atomic state and bounded shutdown.
-- `stimpy/api.py`: nine bounded GET endpoints; all write methods return 405.
+- `stimpy/api.py`: twelve bounded GET endpoints; all write methods return 405.
 
 ## Workflow, learning and history
 
 Workflow topology remains exactly `DataQuality -> Features -> Prediction -> MomentumGate -> RiskGate -> DecisionGate`, optionally followed only by disabled `PaperSimulation`. Only terminal states persist. Phase-2 decisions without strict price fields are internally rejected as insufficient data rather than bypassing DataQuality. Results never leave Stimpy.
 
-Memory records store subject/relation/object, source observation IDs, evidence and contradiction counts, bounded confidence, status and `causal=false`. Learning only aggregates patterns; model updates and causal claims remain zero. Prototype reasoning separates the caller's confidence from a bounded reasoning confidence, exposes counterarguments and uncertainty, and explicitly rejects causal/trading conclusions from a single case. Self Critic outputs hypotheses only.
+Memory records store subject/relation/object, source observation IDs, evidence and contradiction counts, bounded confidence, status and `causal=false`. Learning only aggregates patterns; model updates and causal claims remain zero. Prototype Evidence exposes a separate quality score. Reasoning separates caller confidence from bounded reasoning confidence and records assumptions and missing information. Self Critic stores severity and calibration warnings. Reprocessing the same observation reuses the original persisted analysis records.
 
 ## Storage and commands
 
-`stimpy_data/{observations,memory,state,database,logs}` is local and Git-ignored. Observations use rotating append-only JSONL plus SQLite metadata offsets. Prototype knowledge uses the `knowledge_entries` table. SQLite foreign keys are enabled and Stimpy schema migration is version 3. Tests: `python -m compileall -q stimpy tests`; `python -m unittest discover -s tests -v`. Demo: `python -m stimpy.demo_reasoning_prototype`.
+`stimpy_data/{observations,memory,state,database,logs}` is local and Git-ignored. Observations use rotating append-only JSONL plus SQLite metadata offsets. Foundation analysis uses `evidence_results`, `reasoning_results`, `critic_results` and `knowledge_entries`. SQLite foreign keys are enabled and Stimpy schema migration is version 4. Tests: `python -m compileall -q stimpy tests`; `python -m unittest discover -s tests -v`. Demo: `python -m stimpy.demo_reasoning_prototype`.
 
 ## Risks
 
