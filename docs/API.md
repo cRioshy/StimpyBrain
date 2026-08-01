@@ -21,3 +21,5 @@ Payloads come from already sanitized bounded observations or small projections. 
 Evidence, Reasoning and Critic endpoints return persisted internal analysis records with stable IDs. They support bounded `limit` and `offset`, and none represents advice, an order or approval for Pandorick.
 
 `/api/stimpy/incubation` returns bounded task projections and accepts an optional status filter. It remains GET-only; creating, reactivating, cancelling and recording failures are internal explicit service operations, not HTTP endpoints.
+
+`/api/stimpy/patterns` returns persisted Pattern projections with bounded `limit`, `offset` and an optional status filter. It reports `model_updates=0` and `causal_claims=0`. Learning cases cannot be submitted through HTTP.

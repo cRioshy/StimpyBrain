@@ -20,6 +20,9 @@ class Observer:
         confidence=float(decision["confidence"]); profit=float(decision["profit"])
         timestamp=parse_timestamp(decision["timestamp"]) if "timestamp" in decision else datetime.now(UTC)
         canonical={"symbol":decision["symbol"].upper(),"market":decision["market"].lower(),"decision":direction.value,"confidence":confidence,"outcome":outcome.value,"profit":profit,"source":decision["source"].strip()}
+        if "market_regime" in decision:
+            if not isinstance(decision["market_regime"],str) or not decision["market_regime"].strip(): raise TypeError("market_regime must be a non-empty string")
+            canonical["market_regime"]=decision["market_regime"].strip().upper()
         raw=json.dumps(canonical,sort_keys=True,separators=(",",":"),ensure_ascii=True,allow_nan=False).encode(); digest=hashlib.sha256(raw).hexdigest()
         observation_id=str(decision.get("observation_id") or hashlib.sha256(b"stimpy-prototype|"+raw).hexdigest())
         payload=dict(canonical); payload["timestamp"]=timestamp.isoformat()

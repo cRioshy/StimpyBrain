@@ -13,14 +13,14 @@ class ReadOnlyAPI:
     def source_status(self): return self.worker.adapter.source_status() if self.worker else {"enabled":False,"available":None}
     def observations(self,limit=100,offset=0): return {"items":self.store.list(limit,offset),"limit":limit,"offset":offset,"total":self.store.count()}
     def memory_snapshot(self,limit=100,offset=0): return self.memory.snapshot(limit,offset)
-    def patterns(self,limit=100): return self.learning.analyze(limit)
+    def patterns(self,limit=100,offset=0,status=None): return {"items":self.store.list_patterns(limit,offset,status),"limit":limit,"offset":offset,"total":self.store.count("patterns"),"mode":"explicit_evidence_descriptive_only","model_updates":0,"causal_claims":0}
     def workflow_results(self,limit=100,offset=0): return {"items":self.store.list_workflow_results(limit,offset),"total":self.store.count("workflow_results")}
     def evidence_results(self,limit=100,offset=0): return {"items":self.store.list_evidence(limit,offset),"limit":limit,"offset":offset,"total":self.store.count("evidence_results")}
     def reasoning_results(self,limit=100,offset=0): return {"items":self.store.list_reasoning(limit,offset),"limit":limit,"offset":offset,"total":self.store.count("reasoning_results")}
     def critic_results(self,limit=100,offset=0): return {"items":self.store.list_critics(limit,offset),"limit":limit,"offset":offset,"total":self.store.count("critic_results")}
     def incubations(self,limit=100,offset=0,status=None): return {"items":self.store.list_incubations(limit,offset,status),"limit":limit,"offset":offset,"total":self.store.count("incubation_tasks")}
     def knowledge_graph(self): return self.graph()
-    def statistics(self): return {"observations":self.store.count(),"memories":self.store.count("memories"),"workflow_results":self.store.count("workflow_results"),"evidence_results":self.store.count("evidence_results"),"reasoning_results":self.store.count("reasoning_results"),"critic_results":self.store.count("critic_results"),"incubation_tasks":self.store.count("incubation_tasks")}
+    def statistics(self): return {"observations":self.store.count(),"memories":self.store.count("memories"),"workflow_results":self.store.count("workflow_results"),"evidence_results":self.store.count("evidence_results"),"reasoning_results":self.store.count("reasoning_results"),"critic_results":self.store.count("critic_results"),"incubation_tasks":self.store.count("incubation_tasks"),"patterns":self.store.count("patterns"),"pattern_cases":self.store.count("pattern_cases")}
 
 ROUTES={"/api/stimpy/health":"health","/api/stimpy/status":"status","/api/stimpy/source-status":"source_status","/api/stimpy/observations/recent":"observations","/api/stimpy/memory":"memory_snapshot","/api/stimpy/evidence/recent":"evidence_results","/api/stimpy/reasoning/recent":"reasoning_results","/api/stimpy/critic/recent":"critic_results","/api/stimpy/incubation":"incubations","/api/stimpy/patterns":"patterns","/api/stimpy/workflow-results/recent":"workflow_results","/api/stimpy/graph":"knowledge_graph","/api/stimpy/statistics":"statistics"}
 class _Handler(BaseHTTPRequestHandler):
@@ -31,7 +31,7 @@ class _Handler(BaseHTTPRequestHandler):
         fn=getattr(self.server.api,name); kwargs={}
         if name in {"observations","memory_snapshot","workflow_results","evidence_results","reasoning_results","critic_results"}: kwargs={"limit":limit,"offset":offset}
         elif name=="incubations": kwargs={"limit":limit,"offset":offset,"status":(query.get("status")or[None])[0]}
-        elif name=="patterns": kwargs={"limit":limit}
+        elif name=="patterns": kwargs={"limit":limit,"offset":offset,"status":(query.get("status")or[None])[0]}
         try: self._send(fn(**kwargs))
         except Exception as exc: self._send({"error":type(exc).__name__},HTTPStatus.INTERNAL_SERVER_ERROR)
     def do_POST(self): self._send({"error":"read-only api"},HTTPStatus.METHOD_NOT_ALLOWED)

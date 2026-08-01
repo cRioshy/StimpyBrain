@@ -1,15 +1,17 @@
 # Session handover
 
 - Date/time: 2026-08-01 CEST.
-- Goal: implement Phase B persistent incubation on top of the reviewed Foundation without automatic worker or Pandorick integration.
-- Starting point: clean `agent/stimpy-intelligence-foundation` at `2a4c623`; baseline compile succeeded and 41/41 tests passed.
-- Implemented: typed `IncubationStatus`, `IncubationTask` and `IncubationComparison`; SQLite schema v5; stable idempotent task creation; explicit due transition; reactivation requiring different persisted observations and Evidence; first/final Reasoning preservation; score/confidence/direction comparison; idempotent resolution/cancellation; bounded failure handling; restart persistence; bounded GET-only projection.
-- Configuration: `STIMPY_INCUBATION_DEFAULT_SECONDS=3600` and `STIMPY_INCUBATION_MAX_RETRIES=3`; neither setting activates a scheduler.
-- Tests: targeted incubation suite passed 7/7; full suite passed 48/48; `compileall` and environment configuration check succeeded.
-- Safety: no scheduler, worker connection, Pandorick write, broker, order, Telegram, live-trading, model mutation or confidence increase from waiting was added. Polling remains disabled by default.
-- Documentation: README, state, architecture, API, data model, security boundaries, known problems, next steps and master plan updated; `STIMPY_INCUBATION.md` added.
-- Not implemented: automatic scheduling, multi-observation Pattern Learning, Hypothesis Engine, Strategy Lab, Insight Generator and Ren.
-- BEFORE backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-01_22-22-50_BEFORE.zip`; 241,530 bytes and 238 entries; archive open and test extraction passed.
-- AFTER backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-01_22-30-12_AFTER.zip`; 248,506 bytes and 243 entries; archive open and test extraction passed.
-- Publication: implementation commit `60674f3` (`Build Stimpy incubation phase`) was pushed to `origin/agent/stimpy-incubation`. Draft PR #4 targets the prerequisite Foundation branch `agent/stimpy-intelligence-foundation`: `https://github.com/cRioshy/StimpyBrain/pull/4`. Nothing was merged to `main`.
-- Exact next safe step: implement reviewed Pattern Learning with independent-case grouping, minimum evidence and contradiction retention; do not promote knowledge or alter Pandorick automatically.
+- Goal: implement Phase C deterministic Pattern Learning on top of Foundation and Incubation without automatic worker or Pandorick integration.
+- Starting point: clean `agent/stimpy-incubation` at `07147cb`; baseline compile succeeded and 48/48 tests passed.
+- Existing components retained: GET-only Pandorick client, Observation JSONL/SQLite store, Memory, descriptive `LearningService`, Workflow Gate, Evidence, Reasoning, Self Critic, provisional Knowledge and explicit Incubation. No stable component was replaced.
+- Implemented: typed `PatternStatus` and validated `Pattern`; explicit `PatternLearningService`; stable grouping by market, symbol, decision and market regime; persisted Observation/Evidence case links; correlation-based independence; idempotent replay; positive, negative and unresolved counts; contradiction retention; bounded status/confidence rules; restart persistence; bounded GET-only Pattern projection.
+- Storage: SQLite schema v6 adds `patterns` and `pattern_cases` with foreign keys, uniqueness constraints and indexes. Existing observation, analysis, incubation and knowledge data is preserved.
+- Configuration: `STIMPY_PATTERN_MIN_CASES=25`, `STIMPY_PATTERN_SUPPORTED_MIN_CASES=50`, and `STIMPY_CONFIDENCE_MAX_PROVISIONAL=0.70`. These settings do not activate a scheduler or worker.
+- Status rules: fewer than 25 cases remains `OBSERVED`; at least 25 becomes `PROVISIONAL` or `CONTRADICTED` for a negative majority; `SUPPORTED` requires at least 50 cases and zero negative cases. Confidence is a capped descriptive consistency score, not probability.
+- Tests: targeted Phase-C suite passed 8/8; full suite passed 56/56; `compileall`, environment configuration validation and SQLite foreign-key check succeeded with zero violations. During development, an initial Store/domain-shape mismatch caused 7 targeted errors and two expected schema-version assertions failed in the first full run; both causes were corrected and rerun successfully.
+- Safety: no scheduler, worker connection, Pandorick write, broker, order, Telegram, live-trading, strategy mutation, model update, code mutation or causal claim was added. Polling remains disabled by default.
+- Limitations: exact grouping only; market regime must be present or becomes `UNKNOWN`; no indicator bucketing, automatic regime inference, threshold calibration, Hypothesis Engine, Strategy Lab or Pattern-to-Knowledge promotion.
+- BEFORE backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-01_22-51-05_BEFORE.zip`; 291,967 bytes and 274 entries; archive open and test extraction passed.
+- AFTER backup: pending final verified archive.
+- Git: branch `agent/stimpy-pattern-learning`; commit, push and Draft PR pending final verification.
+- Exact next safe step: design reviewed Phase-D Hypothesis records linked to supporting and contradicting Pattern IDs with separate minimum-evidence and rejection rules; do not promote Knowledge or alter Pandorick automatically.

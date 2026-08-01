@@ -32,6 +32,8 @@ class CriticSeverity(StrEnum):
     INFO="INFO"; LOW="LOW"; MEDIUM="MEDIUM"; HIGH="HIGH"; CRITICAL="CRITICAL"
 class IncubationStatus(StrEnum):
     NEW="NEW"; INCUBATING="INCUBATING"; READY="READY"; RESOLVED="RESOLVED"; FAILED="FAILED"; CANCELLED="CANCELLED"
+class PatternStatus(StrEnum):
+    OBSERVED="OBSERVED"; PROVISIONAL="PROVISIONAL"; SUPPORTED="SUPPORTED"; CONTRADICTED="CONTRADICTED"; ARCHIVED="ARCHIVED"
 
 @dataclass(frozen=True)
 class Observation:
@@ -133,3 +135,23 @@ class IncubationTask:
         if self.reactivate_at<self.created_at: raise ValueError("reactivate_at must not precede created_at")
         if self.failure_count<0: raise ValueError("failure_count must not be negative")
         if self.schema_version!=1: raise ValueError("unsupported incubation schema")
+
+@dataclass(frozen=True)
+class Pattern:
+    pattern_id:str; pattern_type:str; conditions:dict[str,str]
+    observed_cases:int; positive_cases:int; negative_cases:int; unresolved_cases:int
+    evidence_count:int; contradiction_count:int; confidence:float; status:PatternStatus
+    created_at:datetime; updated_at:datetime; schema_version:int=1
+    def __post_init__(self):
+        if not self.pattern_id.strip() or not self.pattern_type.strip(): raise ValueError("pattern identity and type are required")
+        if not self.conditions: raise ValueError("pattern conditions are required")
+        if any(not str(key).strip() or not str(value).strip() for key,value in self.conditions.items()): raise ValueError("pattern conditions must be non-empty strings")
+        counts=(self.observed_cases,self.positive_cases,self.negative_cases,self.unresolved_cases,self.evidence_count,self.contradiction_count)
+        if any(isinstance(value,bool) or not isinstance(value,int) or value<0 for value in counts): raise ValueError("pattern counts must be non-negative integers")
+        if self.observed_cases!=self.positive_cases+self.negative_cases+self.unresolved_cases: raise ValueError("pattern case counts must balance")
+        if self.evidence_count>self.observed_cases or self.contradiction_count>self.negative_cases: raise ValueError("pattern evidence counts are inconsistent")
+        if not isfinite(float(self.confidence)) or not 0.0<=float(self.confidence)<=1.0: raise ValueError("pattern confidence must be between 0 and 1")
+        PatternStatus(self.status)
+        if self.created_at.tzinfo is None or self.updated_at.tzinfo is None: raise ValueError("pattern timestamps must be aware")
+        if self.updated_at<self.created_at: raise ValueError("pattern updated_at must not precede created_at")
+        if self.schema_version!=1: raise ValueError("unsupported pattern schema")

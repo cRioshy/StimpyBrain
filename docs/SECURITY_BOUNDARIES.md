@@ -10,4 +10,5 @@
 - Workflow results are internal, terminal-only and always have zero order side effects.
 - Evidence, Reasoning and Critic projections are internal, GET-only and cannot authorize an order or write to Pandorick.
 - Incubation is explicit and local: no background scheduler, worker activation, network callback or confidence increase without new persisted evidence.
+- Pattern Learning is explicit and local: it requires persisted Evidence, preserves contradictions, cannot update models or strategies and has no automatic worker activation.
 - `.env`, databases, observation data, logs, ZIPs, virtual environments and caches are ignored by Git.

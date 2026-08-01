@@ -4,7 +4,7 @@ import json,os,sqlite3
 from datetime import UTC,datetime
 from pathlib import Path
 from threading import RLock
-from .models import CriticResult,EvidenceResult,IncubationComparison,IncubationStatus,IncubationTask,KnowledgeEntry,KnowledgeStatus,MemoryRecord,Observation,ReasoningResult,parse_timestamp
+from .models import CriticResult,EvidenceResult,IncubationComparison,IncubationStatus,IncubationTask,KnowledgeEntry,KnowledgeStatus,MemoryRecord,Observation,Pattern,PatternStatus,ReasoningResult,parse_timestamp
 
 SCHEMA="""
 CREATE TABLE IF NOT EXISTS stimpy_schema_migrations(version INTEGER PRIMARY KEY,applied_at TEXT NOT NULL);
@@ -66,6 +66,22 @@ CREATE TABLE IF NOT EXISTS incubation_tasks(
  FOREIGN KEY(final_reasoning_id) REFERENCES reasoning_results(reasoning_id));
 CREATE INDEX IF NOT EXISTS ix_incubation_status_time ON incubation_tasks(status,reactivate_at);
 """
+PATTERN_SCHEMA="""
+CREATE TABLE IF NOT EXISTS patterns(
+ pattern_id TEXT PRIMARY KEY,pattern_type TEXT NOT NULL,conditions TEXT NOT NULL,
+ observed_cases INTEGER NOT NULL,positive_cases INTEGER NOT NULL,negative_cases INTEGER NOT NULL,
+ unresolved_cases INTEGER NOT NULL,evidence_count INTEGER NOT NULL,contradiction_count INTEGER NOT NULL,
+ confidence REAL NOT NULL,status TEXT NOT NULL CHECK(status IN ('OBSERVED','PROVISIONAL','SUPPORTED','CONTRADICTED','ARCHIVED')),
+ created_at TEXT NOT NULL,updated_at TEXT NOT NULL,schema_version INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS pattern_cases(
+ pattern_id TEXT NOT NULL,observation_id TEXT NOT NULL,evidence_id TEXT NOT NULL,independence_key TEXT NOT NULL,
+ outcome TEXT NOT NULL,pattern_type TEXT NOT NULL,conditions TEXT NOT NULL,created_at TEXT NOT NULL,
+ PRIMARY KEY(pattern_id,observation_id),UNIQUE(pattern_id,independence_key),
+ FOREIGN KEY(pattern_id) REFERENCES patterns(pattern_id),FOREIGN KEY(observation_id) REFERENCES observations(observation_id),
+ FOREIGN KEY(evidence_id) REFERENCES evidence_results(evidence_id));
+CREATE INDEX IF NOT EXISTS ix_patterns_status_updated ON patterns(status,updated_at DESC);
+CREATE INDEX IF NOT EXISTS ix_pattern_cases_pattern ON pattern_cases(pattern_id,created_at ASC);
+"""
 class ObservationStore:
     def __init__(self,database_path,data_dir=None,rotation_bytes=134217728):
         self.path=Path(database_path); self.data_dir=Path(data_dir or self.path.parents[1]); self.observations_dir=self.data_dir/"observations"
@@ -95,6 +111,8 @@ class ObservationStore:
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(4,datetime.now(UTC).isoformat()))
             self._db.executescript(INCUBATION_SCHEMA)
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(5,datetime.now(UTC).isoformat()))
+            self._db.executescript(PATTERN_SCHEMA)
+            self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(6,datetime.now(UTC).isoformat()))
     @property
     def foreign_keys_enabled(self): return bool(self._db.execute("PRAGMA foreign_keys").fetchone()[0])
     @property
@@ -145,7 +163,7 @@ class ObservationStore:
             row["content_hash"],int(row["schema_version"]),row.get("decision"),row.get("confidence"),row.get("outcome"),row.get("profit"))
             for row in self.list(limit)]
     def count(self,table="observations"):
-        if table not in {"observations","memories","workflow_results","knowledge_entries","evidence_results","reasoning_results","critic_results","incubation_tasks"}: raise ValueError("invalid table")
+        if table not in {"observations","memories","workflow_results","knowledge_entries","evidence_results","reasoning_results","critic_results","incubation_tasks","patterns","pattern_cases"}: raise ValueError("invalid table")
         return int(self._db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
     def upsert_memory(self,m:MemoryRecord):
         with self._lock,self._db:
@@ -245,6 +263,41 @@ class ObservationStore:
         with self._lock,self._db:
             cursor=self._db.execute("UPDATE incubation_tasks SET status='READY' WHERE status='INCUBATING' AND reactivate_at<=?",(now.isoformat(),))
             return cursor.rowcount
+    def add_pattern_case(self,pattern_id,pattern_type,conditions,observation,evidence_id,created_at):
+        conditions_json=json.dumps(conditions,sort_keys=True,separators=(",",":"),ensure_ascii=True)
+        now=parse_timestamp(created_at).isoformat()
+        with self._lock,self._db:
+            self._db.execute("""INSERT OR IGNORE INTO patterns
+            (pattern_id,pattern_type,conditions,observed_cases,positive_cases,negative_cases,unresolved_cases,evidence_count,contradiction_count,confidence,status,created_at,updated_at,schema_version)
+            VALUES(?,?,?,0,0,0,0,0,0,0,'OBSERVED',?,?,1)""",(pattern_id,pattern_type,conditions_json,now,now))
+            cursor=self._db.execute("""INSERT OR IGNORE INTO pattern_cases
+            (pattern_id,observation_id,evidence_id,independence_key,outcome,pattern_type,conditions,created_at)
+            VALUES(?,?,?,?,?,?,?,?)""",(pattern_id,observation["observation_id"],evidence_id,observation["correlation_id"],observation.get("outcome") or "UNKNOWN",pattern_type,conditions_json,now))
+            return cursor.rowcount==1
+    def save_pattern(self,pattern:Pattern):
+        with self._lock,self._db:
+            cursor=self._db.execute("""UPDATE patterns SET observed_cases=?,positive_cases=?,negative_cases=?,unresolved_cases=?,
+            evidence_count=?,contradiction_count=?,confidence=?,status=?,updated_at=? WHERE pattern_id=?""",
+            (pattern.observed_cases,pattern.positive_cases,pattern.negative_cases,pattern.unresolved_cases,pattern.evidence_count,pattern.contradiction_count,pattern.confidence,pattern.status.value,pattern.updated_at.isoformat(),pattern.pattern_id))
+            if cursor.rowcount!=1: raise KeyError("unknown pattern")
+        return self.get_pattern(pattern.pattern_id)
+    def get_pattern(self,pattern_id):
+        row=self._db.execute("SELECT * FROM patterns WHERE pattern_id=?",(pattern_id,)).fetchone()
+        return self._pattern_from_row(row) if row else None
+    def list_patterns(self,limit=100,offset=0,status=None):
+        limit=max(1,min(int(limit),1000)); offset=max(0,int(offset))
+        if status is None: rows=self._db.execute("SELECT * FROM patterns ORDER BY updated_at DESC LIMIT ? OFFSET ?",(limit,offset)).fetchall()
+        else: rows=self._db.execute("SELECT * FROM patterns WHERE status=? ORDER BY updated_at DESC LIMIT ? OFFSET ?",(PatternStatus(status).value,limit,offset)).fetchall()
+        return [self._pattern_dict(row) for row in rows]
+    def list_pattern_cases(self,pattern_id):
+        return [dict(row) for row in self._db.execute("SELECT * FROM pattern_cases WHERE pattern_id=? ORDER BY created_at ASC",(pattern_id,)).fetchall()]
+    @staticmethod
+    def _pattern_from_row(row):
+        return Pattern(row["pattern_id"],row["pattern_type"],json.loads(row["conditions"]),int(row["observed_cases"]),int(row["positive_cases"]),int(row["negative_cases"]),int(row["unresolved_cases"]),int(row["evidence_count"]),int(row["contradiction_count"]),float(row["confidence"]),PatternStatus(row["status"]),parse_timestamp(row["created_at"]),parse_timestamp(row["updated_at"]),int(row["schema_version"]))
+    @classmethod
+    def _pattern_dict(cls,row):
+        pattern=cls._pattern_from_row(row)
+        return {"pattern_id":pattern.pattern_id,"pattern_type":pattern.pattern_type,"conditions":pattern.conditions,"observed_cases":pattern.observed_cases,"positive_cases":pattern.positive_cases,"negative_cases":pattern.negative_cases,"unresolved_cases":pattern.unresolved_cases,"evidence_count":pattern.evidence_count,"contradiction_count":pattern.contradiction_count,"confidence":pattern.confidence,"status":pattern.status.value,"created_at":pattern.created_at.isoformat(),"updated_at":pattern.updated_at.isoformat(),"schema_version":pattern.schema_version}
     @staticmethod
     def _comparison_json(comparison):
         if comparison is None: return None
