@@ -25,9 +25,11 @@ class MemoryStatus(StrEnum):
 class Decision(StrEnum):
     LONG="LONG"; SHORT="SHORT"; HOLD="HOLD"; WAIT="WAIT"; UNKNOWN="UNKNOWN"
 class Outcome(StrEnum):
-    WIN="WIN"; LOSS="LOSS"; OPEN="OPEN"; EXPIRED="EXPIRED"; UNKNOWN="UNKNOWN"
+    WIN="WIN"; LOSS="LOSS"; OPEN="OPEN"; EXPIRED="EXPIRED"; CANCELLED="CANCELLED"; UNKNOWN="UNKNOWN"
 class KnowledgeStatus(StrEnum):
     OBSERVED="OBSERVED"; PROVISIONAL="PROVISIONAL"; SUPPORTED="SUPPORTED"; CONTRADICTED="CONTRADICTED"
+class CriticSeverity(StrEnum):
+    INFO="INFO"; LOW="LOW"; MEDIUM="MEDIUM"; HIGH="HIGH"; CRITICAL="CRITICAL"
 
 @dataclass(frozen=True)
 class Observation:
@@ -61,22 +63,47 @@ class MemoryRecord:
 @dataclass(frozen=True)
 class EvidenceResult:
     score:int; normalized_score:float; supporting_evidence:tuple[str,...]; contradicting_evidence:tuple[str,...]
-    evidence_count:int; created_at:datetime
+    evidence_count:int; created_at:datetime; evidence_id:str=""; observation_id:str=""; quality_score:float=0.0; schema_version:int=1
+    def __post_init__(self):
+        if not self.evidence_id or not self.observation_id: raise ValueError("evidence and observation IDs are required")
+        if self.schema_version!=1: raise ValueError("unsupported evidence schema")
+        if self.created_at.tzinfo is None: raise ValueError("evidence timestamp must be aware")
+        if self.evidence_count<0: raise ValueError("evidence_count must not be negative")
+        for name in ("normalized_score","quality_score"):
+            value=float(getattr(self,name))
+            if not isfinite(value) or not 0.0<=value<=1.0: raise ValueError(f"{name} must be between 0 and 1")
+    @property
+    def raw_score(self): return self.score
 
 @dataclass(frozen=True)
 class ReasoningResult:
     observation_id:str; evidence_score:int; reasons:tuple[str,...]; counterarguments:tuple[str,...]
-    conclusion:str; confidence:float; uncertainty:float; created_at:datetime
+    conclusion:str; confidence:float; uncertainty:float; created_at:datetime; reasoning_id:str=""; evidence_id:str=""
+    assumptions:tuple[str,...]=(); missing_information:tuple[str,...]=(); schema_version:int=1
+    def __post_init__(self):
+        if not self.reasoning_id or not self.observation_id or not self.evidence_id: raise ValueError("reasoning, observation and evidence IDs are required")
+        if self.schema_version!=1: raise ValueError("unsupported reasoning schema")
+        if self.created_at.tzinfo is None: raise ValueError("reasoning timestamp must be aware")
+        if not self.conclusion.strip(): raise ValueError("reasoning conclusion is required")
+        for name in ("confidence","uncertainty"):
+            value=float(getattr(self,name))
+            if not isfinite(value) or not 0.0<=value<=1.0: raise ValueError(f"{name} must be between 0 and 1")
 
 @dataclass(frozen=True)
 class CriticResult:
     observation_id:str; issues:tuple[str,...]; severity:str; suggestions:tuple[str,...]; created_at:datetime
+    critic_id:str=""; reasoning_id:str=""; calibration_warning:bool=False; schema_version:int=1
+    def __post_init__(self):
+        if not self.critic_id or not self.observation_id or not self.reasoning_id: raise ValueError("critic, observation and reasoning IDs are required")
+        CriticSeverity(self.severity)
+        if self.schema_version!=1: raise ValueError("unsupported critic schema")
+        if self.created_at.tzinfo is None: raise ValueError("critic timestamp must be aware")
 
 @dataclass(frozen=True)
 class KnowledgeEntry:
     knowledge_id:str; observation_id:str; symbol:str; decision:str; evidence_score:int
     reasons:tuple[str,...]; counterarguments:tuple[str,...]; critic_issues:tuple[str,...]
-    status:KnowledgeStatus; created_at:datetime; schema_version:int=1
+    status:KnowledgeStatus; created_at:datetime; schema_version:int=1; reasoning_id:str=""; critic_id:str=""
 
 @dataclass(frozen=True)
 class PrototypeResult:

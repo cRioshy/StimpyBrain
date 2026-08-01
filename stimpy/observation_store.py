@@ -4,7 +4,7 @@ import json,os,sqlite3
 from datetime import UTC,datetime
 from pathlib import Path
 from threading import RLock
-from .models import KnowledgeEntry,KnowledgeStatus,MemoryRecord,Observation,parse_timestamp
+from .models import CriticResult,EvidenceResult,KnowledgeEntry,KnowledgeStatus,MemoryRecord,Observation,ReasoningResult,parse_timestamp
 
 SCHEMA="""
 CREATE TABLE IF NOT EXISTS stimpy_schema_migrations(version INTEGER PRIMARY KEY,applied_at TEXT NOT NULL);
@@ -31,6 +31,28 @@ CREATE TABLE IF NOT EXISTS knowledge_entries(
  status TEXT NOT NULL CHECK(status IN ('OBSERVED','PROVISIONAL','SUPPORTED','CONTRADICTED')),
  created_at TEXT NOT NULL,schema_version INTEGER NOT NULL,FOREIGN KEY(observation_id) REFERENCES observations(observation_id));
 """
+FOUNDATION_RESULTS_SCHEMA="""
+CREATE TABLE IF NOT EXISTS evidence_results(
+ evidence_id TEXT PRIMARY KEY,observation_id TEXT NOT NULL UNIQUE,raw_score INTEGER NOT NULL,
+ normalized_score REAL NOT NULL,quality_score REAL NOT NULL,supporting_evidence TEXT NOT NULL,
+ contradicting_evidence TEXT NOT NULL,evidence_count INTEGER NOT NULL,created_at TEXT NOT NULL,
+ schema_version INTEGER NOT NULL,FOREIGN KEY(observation_id) REFERENCES observations(observation_id));
+CREATE TABLE IF NOT EXISTS reasoning_results(
+ reasoning_id TEXT PRIMARY KEY,observation_id TEXT NOT NULL UNIQUE,evidence_id TEXT NOT NULL UNIQUE,
+ evidence_score INTEGER NOT NULL,reasons TEXT NOT NULL,counterarguments TEXT NOT NULL,conclusion TEXT NOT NULL,confidence REAL NOT NULL,
+ uncertainty REAL NOT NULL,assumptions TEXT NOT NULL,missing_information TEXT NOT NULL,created_at TEXT NOT NULL,
+ schema_version INTEGER NOT NULL,FOREIGN KEY(observation_id) REFERENCES observations(observation_id),
+ FOREIGN KEY(evidence_id) REFERENCES evidence_results(evidence_id));
+CREATE TABLE IF NOT EXISTS critic_results(
+ critic_id TEXT PRIMARY KEY,observation_id TEXT NOT NULL UNIQUE,reasoning_id TEXT NOT NULL UNIQUE,
+ issues TEXT NOT NULL,severity TEXT NOT NULL CHECK(severity IN ('INFO','LOW','MEDIUM','HIGH','CRITICAL')),
+ suggestions TEXT NOT NULL,calibration_warning INTEGER NOT NULL,created_at TEXT NOT NULL,
+ schema_version INTEGER NOT NULL,FOREIGN KEY(observation_id) REFERENCES observations(observation_id),
+ FOREIGN KEY(reasoning_id) REFERENCES reasoning_results(reasoning_id));
+CREATE INDEX IF NOT EXISTS ix_evidence_created ON evidence_results(created_at DESC);
+CREATE INDEX IF NOT EXISTS ix_reasoning_created ON reasoning_results(created_at DESC);
+CREATE INDEX IF NOT EXISTS ix_critic_created ON critic_results(created_at DESC);
+"""
 class ObservationStore:
     def __init__(self,database_path,data_dir=None,rotation_bytes=134217728):
         self.path=Path(database_path); self.data_dir=Path(data_dir or self.path.parents[1]); self.observations_dir=self.data_dir/"observations"
@@ -53,6 +75,11 @@ class ObservationStore:
             for name,kind in (("decision","TEXT"),("confidence","REAL"),("outcome","TEXT"),("profit","REAL")):
                 if name not in columns: self._db.execute(f"ALTER TABLE observations ADD COLUMN {name} {kind}")
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(3,datetime.now(UTC).isoformat()))
+            knowledge_columns={r[1] for r in self._db.execute("PRAGMA table_info(knowledge_entries)")}
+            for name in ("reasoning_id","critic_id"):
+                if name not in knowledge_columns: self._db.execute(f"ALTER TABLE knowledge_entries ADD COLUMN {name} TEXT")
+            self._db.executescript(FOUNDATION_RESULTS_SCHEMA)
+            self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(4,datetime.now(UTC).isoformat()))
     @property
     def foreign_keys_enabled(self): return bool(self._db.execute("PRAGMA foreign_keys").fetchone()[0])
     @property
@@ -99,7 +126,7 @@ class ObservationStore:
             row["content_hash"],int(row["schema_version"]),row.get("decision"),row.get("confidence"),row.get("outcome"),row.get("profit"))
             for row in self.list(limit)]
     def count(self,table="observations"):
-        if table not in {"observations","memories","workflow_results","knowledge_entries"}: raise ValueError("invalid table")
+        if table not in {"observations","memories","workflow_results","knowledge_entries","evidence_results","reasoning_results","critic_results"}: raise ValueError("invalid table")
         return int(self._db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
     def upsert_memory(self,m:MemoryRecord):
         with self._lock,self._db:
@@ -115,7 +142,10 @@ class ObservationStore:
     def list_workflow_results(self,limit=100,offset=0): return [dict(r) for r in self._db.execute("SELECT * FROM workflow_results ORDER BY created_at DESC LIMIT ? OFFSET ?",(max(1,min(limit,1000)),max(0,offset))).fetchall()]
     def save_knowledge(self,entry:KnowledgeEntry):
         with self._lock,self._db:
-            self._db.execute("INSERT OR IGNORE INTO knowledge_entries VALUES(?,?,?,?,?,?,?,?,?,?,?)",(entry.knowledge_id,entry.observation_id,entry.symbol,entry.decision,entry.evidence_score,json.dumps(entry.reasons),json.dumps(entry.counterarguments),json.dumps(entry.critic_issues),entry.status.value,entry.created_at.isoformat(),entry.schema_version))
+            self._db.execute("""INSERT OR IGNORE INTO knowledge_entries
+            (knowledge_id,observation_id,symbol,decision,evidence_score,reasons,counterarguments,
+             critic_issues,status,created_at,schema_version,reasoning_id,critic_id)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",(entry.knowledge_id,entry.observation_id,entry.symbol,entry.decision,entry.evidence_score,json.dumps(entry.reasons),json.dumps(entry.counterarguments),json.dumps(entry.critic_issues),entry.status.value,entry.created_at.isoformat(),entry.schema_version,entry.reasoning_id,entry.critic_id))
         return self.get_knowledge(entry.knowledge_id)
     def get_knowledge(self,knowledge_id):
         row=self._db.execute("SELECT * FROM knowledge_entries WHERE knowledge_id=?",(knowledge_id,)).fetchone()
@@ -125,7 +155,54 @@ class ObservationStore:
         return [self._knowledge_from_row(row) for row in rows]
     @staticmethod
     def _knowledge_from_row(row):
-        return KnowledgeEntry(row["knowledge_id"],row["observation_id"],row["symbol"],row["decision"],int(row["evidence_score"]),tuple(json.loads(row["reasons"])),tuple(json.loads(row["counterarguments"])),tuple(json.loads(row["critic_issues"])),KnowledgeStatus(row["status"]),parse_timestamp(row["created_at"]),int(row["schema_version"]))
+        keys=set(row.keys())
+        return KnowledgeEntry(row["knowledge_id"],row["observation_id"],row["symbol"],row["decision"],int(row["evidence_score"]),tuple(json.loads(row["reasons"])),tuple(json.loads(row["counterarguments"])),tuple(json.loads(row["critic_issues"])),KnowledgeStatus(row["status"]),parse_timestamp(row["created_at"]),int(row["schema_version"]),row["reasoning_id"] or "" if "reasoning_id" in keys else "",row["critic_id"] or "" if "critic_id" in keys else "")
+    def save_evidence(self,result:EvidenceResult):
+        with self._lock,self._db:
+            self._db.execute("""INSERT OR IGNORE INTO evidence_results VALUES(?,?,?,?,?,?,?,?,?,?)""",(result.evidence_id,result.observation_id,result.score,result.normalized_score,result.quality_score,json.dumps(result.supporting_evidence),json.dumps(result.contradicting_evidence),result.evidence_count,result.created_at.isoformat(),result.schema_version))
+        return self.get_evidence(result.evidence_id)
+    def get_evidence(self,evidence_id):
+        row=self._db.execute("SELECT * FROM evidence_results WHERE evidence_id=?",(evidence_id,)).fetchone()
+        return self._evidence_from_row(row) if row else None
+    def list_evidence(self,limit=100,offset=0):
+        rows=self._db.execute("SELECT * FROM evidence_results ORDER BY created_at DESC LIMIT ? OFFSET ?",(max(1,min(int(limit),1000)),max(0,int(offset)))).fetchall()
+        return [self._result_row(row) for row in rows]
+    @staticmethod
+    def _evidence_from_row(row):
+        return EvidenceResult(int(row["raw_score"]),float(row["normalized_score"]),tuple(json.loads(row["supporting_evidence"])),tuple(json.loads(row["contradicting_evidence"])),int(row["evidence_count"]),parse_timestamp(row["created_at"]),row["evidence_id"],row["observation_id"],float(row["quality_score"]),int(row["schema_version"]))
+    def save_reasoning(self,result:ReasoningResult):
+        with self._lock,self._db:
+            self._db.execute("""INSERT OR IGNORE INTO reasoning_results VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",(result.reasoning_id,result.observation_id,result.evidence_id,result.evidence_score,json.dumps(result.reasons),json.dumps(result.counterarguments),result.conclusion,result.confidence,result.uncertainty,json.dumps(result.assumptions),json.dumps(result.missing_information),result.created_at.isoformat(),result.schema_version))
+        return self.get_reasoning(result.reasoning_id)
+    def get_reasoning(self,reasoning_id):
+        row=self._db.execute("SELECT * FROM reasoning_results WHERE reasoning_id=?",(reasoning_id,)).fetchone()
+        return self._reasoning_from_row(row) if row else None
+    def list_reasoning(self,limit=100,offset=0):
+        rows=self._db.execute("SELECT * FROM reasoning_results ORDER BY created_at DESC LIMIT ? OFFSET ?",(max(1,min(int(limit),1000)),max(0,int(offset)))).fetchall()
+        return [self._result_row(row) for row in rows]
+    @staticmethod
+    def _reasoning_from_row(row):
+        return ReasoningResult(row["observation_id"],int(row["evidence_score"]),tuple(json.loads(row["reasons"])),tuple(json.loads(row["counterarguments"])),row["conclusion"],float(row["confidence"]),float(row["uncertainty"]),parse_timestamp(row["created_at"]),row["reasoning_id"],row["evidence_id"],tuple(json.loads(row["assumptions"])),tuple(json.loads(row["missing_information"])),int(row["schema_version"]))
+    def save_critic(self,result:CriticResult):
+        with self._lock,self._db:
+            self._db.execute("""INSERT OR IGNORE INTO critic_results VALUES(?,?,?,?,?,?,?,?,?)""",(result.critic_id,result.observation_id,result.reasoning_id,json.dumps(result.issues),result.severity,json.dumps(result.suggestions),int(result.calibration_warning),result.created_at.isoformat(),result.schema_version))
+        return self.get_critic(result.critic_id)
+    def get_critic(self,critic_id):
+        row=self._db.execute("SELECT * FROM critic_results WHERE critic_id=?",(critic_id,)).fetchone()
+        return self._critic_from_row(row) if row else None
+    def list_critics(self,limit=100,offset=0):
+        rows=self._db.execute("SELECT * FROM critic_results ORDER BY created_at DESC LIMIT ? OFFSET ?",(max(1,min(int(limit),1000)),max(0,int(offset)))).fetchall()
+        return [self._result_row(row) for row in rows]
+    @staticmethod
+    def _critic_from_row(row):
+        return CriticResult(row["observation_id"],tuple(json.loads(row["issues"])),row["severity"],tuple(json.loads(row["suggestions"])),parse_timestamp(row["created_at"]),row["critic_id"],row["reasoning_id"],bool(row["calibration_warning"]),int(row["schema_version"]))
+    @staticmethod
+    def _result_row(row):
+        item=dict(row)
+        for key in ("supporting_evidence","contradicting_evidence","reasons","counterarguments","assumptions","missing_information","issues","suggestions"):
+            if key in item: item[key]=json.loads(item[key])
+        if "calibration_warning" in item: item["calibration_warning"]=bool(item["calibration_warning"])
+        return item
     def validate_jsonl(self,path):
         valid=[]; corrupt=[]
         with Path(path).open("rb") as handle:

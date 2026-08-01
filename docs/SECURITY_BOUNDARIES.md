@@ -8,4 +8,5 @@
 - Responses are schema-checked, size-bounded, recursively redacted, finite-number checked and timestamp checked.
 - JSONL is append-only; SQLite provides persistent identity indexes and foreign keys.
 - Workflow results are internal, terminal-only and always have zero order side effects.
+- Evidence, Reasoning and Critic projections are internal, GET-only and cannot authorize an order or write to Pandorick.
 - `.env`, databases, observation data, logs, ZIPs, virtual environments and caches are ignored by Git.

@@ -15,17 +15,20 @@ class ReadOnlyAPI:
     def memory_snapshot(self,limit=100,offset=0): return self.memory.snapshot(limit,offset)
     def patterns(self,limit=100): return self.learning.analyze(limit)
     def workflow_results(self,limit=100,offset=0): return {"items":self.store.list_workflow_results(limit,offset),"total":self.store.count("workflow_results")}
+    def evidence_results(self,limit=100,offset=0): return {"items":self.store.list_evidence(limit,offset),"limit":limit,"offset":offset,"total":self.store.count("evidence_results")}
+    def reasoning_results(self,limit=100,offset=0): return {"items":self.store.list_reasoning(limit,offset),"limit":limit,"offset":offset,"total":self.store.count("reasoning_results")}
+    def critic_results(self,limit=100,offset=0): return {"items":self.store.list_critics(limit,offset),"limit":limit,"offset":offset,"total":self.store.count("critic_results")}
     def knowledge_graph(self): return self.graph()
-    def statistics(self): return {"observations":self.store.count(),"memories":self.store.count("memories"),"workflow_results":self.store.count("workflow_results")}
+    def statistics(self): return {"observations":self.store.count(),"memories":self.store.count("memories"),"workflow_results":self.store.count("workflow_results"),"evidence_results":self.store.count("evidence_results"),"reasoning_results":self.store.count("reasoning_results"),"critic_results":self.store.count("critic_results")}
 
-ROUTES={"/api/stimpy/health":"health","/api/stimpy/status":"status","/api/stimpy/source-status":"source_status","/api/stimpy/observations/recent":"observations","/api/stimpy/memory":"memory_snapshot","/api/stimpy/patterns":"patterns","/api/stimpy/workflow-results/recent":"workflow_results","/api/stimpy/graph":"knowledge_graph","/api/stimpy/statistics":"statistics"}
+ROUTES={"/api/stimpy/health":"health","/api/stimpy/status":"status","/api/stimpy/source-status":"source_status","/api/stimpy/observations/recent":"observations","/api/stimpy/memory":"memory_snapshot","/api/stimpy/evidence/recent":"evidence_results","/api/stimpy/reasoning/recent":"reasoning_results","/api/stimpy/critic/recent":"critic_results","/api/stimpy/patterns":"patterns","/api/stimpy/workflow-results/recent":"workflow_results","/api/stimpy/graph":"knowledge_graph","/api/stimpy/statistics":"statistics"}
 class _Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed=urlparse(self.path); name=ROUTES.get(parsed.path)
         if not name: return self._send({"error":"not found"},HTTPStatus.NOT_FOUND)
         query=parse_qs(parsed.query); limit=max(1,min(int((query.get("limit")or["100"])[0]),100)); offset=max(0,int((query.get("offset")or["0"])[0]))
         fn=getattr(self.server.api,name); kwargs={}
-        if name in {"observations","memory_snapshot","workflow_results"}: kwargs={"limit":limit,"offset":offset}
+        if name in {"observations","memory_snapshot","workflow_results","evidence_results","reasoning_results","critic_results"}: kwargs={"limit":limit,"offset":offset}
         elif name=="patterns": kwargs={"limit":limit}
         try: self._send(fn(**kwargs))
         except Exception as exc: self._send({"error":type(exc).__name__},HTTPStatus.INTERNAL_SERVER_ERROR)
