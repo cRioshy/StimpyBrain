@@ -4,7 +4,7 @@ import json,os,sqlite3
 from datetime import UTC,datetime
 from pathlib import Path
 from threading import RLock
-from .models import CriticResult,EvidenceResult,KnowledgeEntry,KnowledgeStatus,MemoryRecord,Observation,ReasoningResult,parse_timestamp
+from .models import CriticResult,EvidenceResult,IncubationComparison,IncubationStatus,IncubationTask,KnowledgeEntry,KnowledgeStatus,MemoryRecord,Observation,ReasoningResult,parse_timestamp
 
 SCHEMA="""
 CREATE TABLE IF NOT EXISTS stimpy_schema_migrations(version INTEGER PRIMARY KEY,applied_at TEXT NOT NULL);
@@ -53,6 +53,19 @@ CREATE INDEX IF NOT EXISTS ix_evidence_created ON evidence_results(created_at DE
 CREATE INDEX IF NOT EXISTS ix_reasoning_created ON reasoning_results(created_at DESC);
 CREATE INDEX IF NOT EXISTS ix_critic_created ON critic_results(created_at DESC);
 """
+INCUBATION_SCHEMA="""
+CREATE TABLE IF NOT EXISTS incubation_tasks(
+ incubation_id TEXT PRIMARY KEY,subject TEXT NOT NULL,question TEXT NOT NULL,
+ initial_observation_id TEXT NOT NULL,initial_reasoning_id TEXT NOT NULL,
+ status TEXT NOT NULL CHECK(status IN ('NEW','INCUBATING','READY','RESOLVED','FAILED','CANCELLED')),
+ created_at TEXT NOT NULL,reactivate_at TEXT NOT NULL,reactivated_at TEXT,final_reasoning_id TEXT,
+ new_observation_ids TEXT NOT NULL,conclusion TEXT,comparison TEXT,failure_count INTEGER NOT NULL,
+ last_error TEXT,schema_version INTEGER NOT NULL,
+ FOREIGN KEY(initial_observation_id) REFERENCES observations(observation_id),
+ FOREIGN KEY(initial_reasoning_id) REFERENCES reasoning_results(reasoning_id),
+ FOREIGN KEY(final_reasoning_id) REFERENCES reasoning_results(reasoning_id));
+CREATE INDEX IF NOT EXISTS ix_incubation_status_time ON incubation_tasks(status,reactivate_at);
+"""
 class ObservationStore:
     def __init__(self,database_path,data_dir=None,rotation_bytes=134217728):
         self.path=Path(database_path); self.data_dir=Path(data_dir or self.path.parents[1]); self.observations_dir=self.data_dir/"observations"
@@ -80,6 +93,8 @@ class ObservationStore:
                 if name not in knowledge_columns: self._db.execute(f"ALTER TABLE knowledge_entries ADD COLUMN {name} TEXT")
             self._db.executescript(FOUNDATION_RESULTS_SCHEMA)
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(4,datetime.now(UTC).isoformat()))
+            self._db.executescript(INCUBATION_SCHEMA)
+            self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(5,datetime.now(UTC).isoformat()))
     @property
     def foreign_keys_enabled(self): return bool(self._db.execute("PRAGMA foreign_keys").fetchone()[0])
     @property
@@ -119,6 +134,10 @@ class ObservationStore:
             return [{**dict(r),"payload":self._read_payload(r)} for r in rows]
     def exists(self,observation_id):
         with self._lock: return self._db.execute("SELECT 1 FROM observations WHERE observation_id=?",(observation_id,)).fetchone() is not None
+    def get_observation(self,observation_id):
+        with self._lock:
+            row=self._db.execute("SELECT * FROM observations WHERE observation_id=?",(observation_id,)).fetchone()
+            return {**dict(row),"payload":self._read_payload(row)} if row else None
     def load_recent(self,limit=100):
         return [Observation(
             row["observation_id"],row["event_id"],row["correlation_id"],row["source"],row["source_endpoint"],row["source_type"],
@@ -126,7 +145,7 @@ class ObservationStore:
             row["content_hash"],int(row["schema_version"]),row.get("decision"),row.get("confidence"),row.get("outcome"),row.get("profit"))
             for row in self.list(limit)]
     def count(self,table="observations"):
-        if table not in {"observations","memories","workflow_results","knowledge_entries","evidence_results","reasoning_results","critic_results"}: raise ValueError("invalid table")
+        if table not in {"observations","memories","workflow_results","knowledge_entries","evidence_results","reasoning_results","critic_results","incubation_tasks"}: raise ValueError("invalid table")
         return int(self._db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
     def upsert_memory(self,m:MemoryRecord):
         with self._lock,self._db:
@@ -164,6 +183,9 @@ class ObservationStore:
     def get_evidence(self,evidence_id):
         row=self._db.execute("SELECT * FROM evidence_results WHERE evidence_id=?",(evidence_id,)).fetchone()
         return self._evidence_from_row(row) if row else None
+    def get_evidence_for_observation(self,observation_id):
+        row=self._db.execute("SELECT * FROM evidence_results WHERE observation_id=?",(observation_id,)).fetchone()
+        return self._evidence_from_row(row) if row else None
     def list_evidence(self,limit=100,offset=0):
         rows=self._db.execute("SELECT * FROM evidence_results ORDER BY created_at DESC LIMIT ? OFFSET ?",(max(1,min(int(limit),1000)),max(0,int(offset)))).fetchall()
         return [self._result_row(row) for row in rows]
@@ -176,6 +198,9 @@ class ObservationStore:
         return self.get_reasoning(result.reasoning_id)
     def get_reasoning(self,reasoning_id):
         row=self._db.execute("SELECT * FROM reasoning_results WHERE reasoning_id=?",(reasoning_id,)).fetchone()
+        return self._reasoning_from_row(row) if row else None
+    def get_reasoning_for_observation(self,observation_id):
+        row=self._db.execute("SELECT * FROM reasoning_results WHERE observation_id=?",(observation_id,)).fetchone()
         return self._reasoning_from_row(row) if row else None
     def list_reasoning(self,limit=100,offset=0):
         rows=self._db.execute("SELECT * FROM reasoning_results ORDER BY created_at DESC LIMIT ? OFFSET ?",(max(1,min(int(limit),1000)),max(0,int(offset)))).fetchall()
@@ -193,6 +218,47 @@ class ObservationStore:
     def list_critics(self,limit=100,offset=0):
         rows=self._db.execute("SELECT * FROM critic_results ORDER BY created_at DESC LIMIT ? OFFSET ?",(max(1,min(int(limit),1000)),max(0,int(offset)))).fetchall()
         return [self._result_row(row) for row in rows]
+    def create_incubation(self,task:IncubationTask):
+        with self._lock,self._db:
+            self._db.execute("""INSERT OR IGNORE INTO incubation_tasks
+            (incubation_id,subject,question,initial_observation_id,initial_reasoning_id,status,
+             created_at,reactivate_at,reactivated_at,final_reasoning_id,new_observation_ids,
+             conclusion,comparison,failure_count,last_error,schema_version)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",self._incubation_values(task))
+        return self.get_incubation(task.incubation_id)
+    def update_incubation(self,task:IncubationTask):
+        with self._lock,self._db:
+            cursor=self._db.execute("""UPDATE incubation_tasks SET status=?,reactivate_at=?,reactivated_at=?,
+            final_reasoning_id=?,new_observation_ids=?,conclusion=?,comparison=?,failure_count=?,last_error=?
+            WHERE incubation_id=?""",(task.status.value,task.reactivate_at.isoformat(),task.reactivated_at.isoformat() if task.reactivated_at else None,task.final_reasoning_id,json.dumps(task.new_observation_ids),task.conclusion,self._comparison_json(task.comparison),task.failure_count,task.last_error,task.incubation_id))
+            if cursor.rowcount!=1: raise KeyError("unknown incubation task")
+        return self.get_incubation(task.incubation_id)
+    def get_incubation(self,incubation_id):
+        row=self._db.execute("SELECT * FROM incubation_tasks WHERE incubation_id=?",(incubation_id,)).fetchone()
+        return self._incubation_from_row(row) if row else None
+    def list_incubations(self,limit=100,offset=0,status=None):
+        limit=max(1,min(int(limit),1000)); offset=max(0,int(offset))
+        if status is None: rows=self._db.execute("SELECT * FROM incubation_tasks ORDER BY created_at DESC LIMIT ? OFFSET ?",(limit,offset)).fetchall()
+        else: rows=self._db.execute("SELECT * FROM incubation_tasks WHERE status=? ORDER BY reactivate_at ASC LIMIT ? OFFSET ?",(IncubationStatus(status).value,limit,offset)).fetchall()
+        return [self._incubation_dict(row) for row in rows]
+    def mark_due_incubations_ready(self,now):
+        with self._lock,self._db:
+            cursor=self._db.execute("UPDATE incubation_tasks SET status='READY' WHERE status='INCUBATING' AND reactivate_at<=?",(now.isoformat(),))
+            return cursor.rowcount
+    @staticmethod
+    def _comparison_json(comparison):
+        if comparison is None: return None
+        return json.dumps(comparison.__dict__,sort_keys=True)
+    @classmethod
+    def _incubation_values(cls,task):
+        return (task.incubation_id,task.subject,task.question,task.initial_observation_id,task.initial_reasoning_id,task.status.value,task.created_at.isoformat(),task.reactivate_at.isoformat(),task.reactivated_at.isoformat() if task.reactivated_at else None,task.final_reasoning_id,json.dumps(task.new_observation_ids),task.conclusion,cls._comparison_json(task.comparison),task.failure_count,task.last_error,task.schema_version)
+    @staticmethod
+    def _incubation_from_row(row):
+        comparison=IncubationComparison(**json.loads(row["comparison"])) if row["comparison"] else None
+        return IncubationTask(row["incubation_id"],row["subject"],row["question"],row["initial_observation_id"],row["initial_reasoning_id"],IncubationStatus(row["status"]),parse_timestamp(row["created_at"]),parse_timestamp(row["reactivate_at"]),parse_timestamp(row["reactivated_at"]) if row["reactivated_at"] else None,row["final_reasoning_id"],tuple(json.loads(row["new_observation_ids"])),row["conclusion"],comparison,int(row["failure_count"]),row["last_error"],int(row["schema_version"]))
+    @classmethod
+    def _incubation_dict(cls,row):
+        task=cls._incubation_from_row(row); result=dict(row); result["new_observation_ids"]=list(task.new_observation_ids); result["comparison"]=task.comparison.__dict__ if task.comparison else None; return result
     @staticmethod
     def _critic_from_row(row):
         return CriticResult(row["observation_id"],tuple(json.loads(row["issues"])),row["severity"],tuple(json.loads(row["suggestions"])),parse_timestamp(row["created_at"]),row["critic_id"],row["reasoning_id"],bool(row["calibration_warning"]),int(row["schema_version"]))

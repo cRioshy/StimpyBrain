@@ -14,3 +14,5 @@ Foundation schema v4 adds:
 - `knowledge_entries.reasoning_id` and `knowledge_entries.critic_id`: links provisional knowledge to its analysis records.
 
 All three result tables are idempotent per observation. Existing results are retained rather than silently overwritten. `CANCELLED` is a valid observation outcome.
+
+Phase-B schema v5 adds `incubation_tasks`. Each task retains its initial observation/reasoning, status, due time, optional final reasoning, new observation IDs, conclusion, comparison deltas, direction-change flag, failure count and safe error type. Allowed states are `NEW`, `INCUBATING`, `READY`, `RESOLVED`, `FAILED` and `CANCELLED`. First and second analyses remain separate records.

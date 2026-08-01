@@ -41,7 +41,7 @@ class Phase2Tests(unittest.TestCase):
         item={"decision_id":event,"correlation_id":corr or event,"created_at":datetime.now(UTC).isoformat(),"market":"crypto","symbol":"BTCUSDT","direction":decision,"confidence":.7}
         return self.norm.normalize_item(endpoint,item,datetime.now(UTC))
     def test_config_is_disabled_observe_readonly_local(self):
-        c=StimpyConfig(); self.assertFalse(c.pandorick_enabled); self.assertEqual(c.mode,"observe"); self.assertTrue(c.read_only); c.validate()
+        c=StimpyConfig(); self.assertFalse(c.pandorick_enabled); self.assertEqual(c.mode,"observe"); self.assertTrue(c.read_only); self.assertEqual(c.incubation_default_seconds,3600); self.assertEqual(c.incubation_max_retries,3); c.validate()
         with self.assertRaises(ValueError): replace(c,pandorick_base_url="https://example.com").validate()
     def test_get_only_client_blocks_writes(self):
         c=ReadOnlyHttpClient("http://127.0.0.1:8000")
@@ -66,7 +66,7 @@ class Phase2Tests(unittest.TestCase):
         good={"decision_id":"d","created_at":datetime.now(UTC).isoformat(),"symbol":"BTC","market":"crypto"}; items,errors=self.norm.normalize_envelope("/api/v1/decisions/recent",envelope({"decisions":[good,{"value":float("nan")}] })); self.assertEqual(len(items),1); self.assertEqual(len(errors),1)
     def test_store_jsonl_index_fk_and_rotation(self):
         first=self.observation(event="a"); second=self.observation(event="b")
-        self.assertTrue(self.store.append(first)[0]); self.assertTrue(self.store.append(second)[0]); self.assertTrue(self.store.foreign_keys_enabled); self.assertEqual(self.store.schema_version,4); self.assertEqual(self.store.count(),2); self.assertGreaterEqual(len(list((self.root/"observations").glob("*.jsonl"))),2)
+        self.assertTrue(self.store.append(first)[0]); self.assertTrue(self.store.append(second)[0]); self.assertTrue(self.store.foreign_keys_enabled); self.assertEqual(self.store.schema_version,5); self.assertEqual(self.store.count(),2); self.assertGreaterEqual(len(list((self.root/"observations").glob("*.jsonl"))),2)
     def test_all_deduplication_keys_and_restart(self):
         one=self.observation(event="a",corr="c"); self.assertTrue(self.store.append(one)[0]); self.assertFalse(self.store.append(one)[0])
         duplicate_event=replace(self.observation(event="b"),event_id="a"); self.assertEqual(self.store.append(duplicate_event)[1],"event_id")

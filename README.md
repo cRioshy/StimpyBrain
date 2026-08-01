@@ -2,7 +2,7 @@
 
 StimpyBrain is a standalone passive observation, memory and descriptive-learning system for PandorickKi. It can poll a small allowlist of local read-only endpoints through an HTTP client that technically supports GET only. It never writes to Pandorick, sends Telegram messages, contacts a broker, creates orders, or enables paper/live trading.
 
-Phase 2 is installed but the Pandorick connection remains disabled by default (`STIMPY_PANDORICK_ENABLED=false`). A separate local reasoning prototype turns a supplied decision/outcome payload into persisted observation, transparent evidence, non-causal reasoning, self-criticism and provisional knowledge. Foundation schema v4 gives Evidence, Reasoning and Critic results stable IDs, persists them idempotently in SQLite and exposes bounded GET-only projections. It is heuristic—not AI inference or a neural model—and is not connected to the worker or Pandorick.
+Phase 2 is installed but the Pandorick connection remains disabled by default (`STIMPY_PANDORICK_ENABLED=false`). A separate local reasoning prototype turns a supplied decision/outcome payload into persisted observation, transparent evidence, non-causal reasoning, self-criticism and provisional knowledge. SQLite schema v5 also provides persistent incubation tasks with explicit, idempotent reactivation and first/second-analysis comparison. Incubation has no background scheduler and is not connected to the worker or Pandorick. Stimpy remains heuristic—not AI inference or a neural model.
 
 Run the clearly simulated, temporary local demo with:
 
