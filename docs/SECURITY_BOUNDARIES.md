@@ -9,4 +9,5 @@
 - JSONL is append-only; SQLite provides persistent identity indexes and foreign keys.
 - Workflow results are internal, terminal-only and always have zero order side effects.
 - Evidence, Reasoning and Critic projections are internal, GET-only and cannot authorize an order or write to Pandorick.
+- Incubation is explicit and local: no background scheduler, worker activation, network callback or confidence increase without new persisted evidence.
 - `.env`, databases, observation data, logs, ZIPs, virtual environments and caches are ignored by Git.

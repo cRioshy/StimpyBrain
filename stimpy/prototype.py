@@ -5,13 +5,13 @@ from typing import Protocol
 from .evidence import EvidenceEngine
 from .knowledge_graph import KnowledgeGraph
 from .memory_service import Memory
-from .models import IncubationRequest,PrototypeResult
+from .models import IncubationTask,PrototypeResult
 from .observer import Observer
 from .reasoning import ReasoningEngine
 from .self_critic import SelfCritic
 
 class IncubationPort(Protocol):
-    def incubate(self,observation_id:str,question:str,reactivate_at:datetime)->IncubationRequest: ...
+    def create(self,observation_id:str,question:str,reactivate_at:datetime|None=None)->IncubationTask: ...
 
 class StimpyPrototypeService:
     def __init__(self,store,observer=None,evidence=None,reasoning=None,critic=None,knowledge=None):

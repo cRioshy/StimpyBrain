@@ -10,6 +10,7 @@ Loopback default: `http://127.0.0.1:8765`. All endpoints use GET; all write meth
 - `/api/stimpy/evidence/recent`
 - `/api/stimpy/reasoning/recent`
 - `/api/stimpy/critic/recent`
+- `/api/stimpy/incubation`
 - `/api/stimpy/patterns`
 - `/api/stimpy/workflow-results/recent`
 - `/api/stimpy/graph`
@@ -18,3 +19,5 @@ Loopback default: `http://127.0.0.1:8765`. All endpoints use GET; all write meth
 Payloads come from already sanitized bounded observations or small projections. Tokens, authorization headers, cookies, absolute source paths and raw unbounded Pandorick responses are not stored or emitted.
 
 Evidence, Reasoning and Critic endpoints return persisted internal analysis records with stable IDs. They support bounded `limit` and `offset`, and none represents advice, an order or approval for Pandorick.
+
+`/api/stimpy/incubation` returns bounded task projections and accepts an optional status filter. It remains GET-only; creating, reactivating, cancelling and recording failures are internal explicit service operations, not HTTP endpoints.

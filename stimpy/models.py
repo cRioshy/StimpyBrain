@@ -30,6 +30,8 @@ class KnowledgeStatus(StrEnum):
     OBSERVED="OBSERVED"; PROVISIONAL="PROVISIONAL"; SUPPORTED="SUPPORTED"; CONTRADICTED="CONTRADICTED"
 class CriticSeverity(StrEnum):
     INFO="INFO"; LOW="LOW"; MEDIUM="MEDIUM"; HIGH="HIGH"; CRITICAL="CRITICAL"
+class IncubationStatus(StrEnum):
+    NEW="NEW"; INCUBATING="INCUBATING"; READY="READY"; RESOLVED="RESOLVED"; FAILED="FAILED"; CANCELLED="CANCELLED"
 
 @dataclass(frozen=True)
 class Observation:
@@ -111,5 +113,23 @@ class PrototypeResult:
     critic:CriticResult; knowledge_entry:KnowledgeEntry
 
 @dataclass(frozen=True)
-class IncubationRequest:
-    observation_id:str; question:str; reactivate_at:datetime
+class IncubationComparison:
+    initial_evidence_score:int; final_evidence_score:int; score_delta:int
+    initial_confidence:float; final_confidence:float; confidence_delta:float
+    initial_decision:str; final_decision:str; direction_changed:bool
+    initial_conclusion:str; final_conclusion:str
+
+@dataclass(frozen=True)
+class IncubationTask:
+    incubation_id:str; subject:str; question:str; initial_observation_id:str; initial_reasoning_id:str
+    status:IncubationStatus; created_at:datetime; reactivate_at:datetime; reactivated_at:datetime|None=None
+    final_reasoning_id:str|None=None; new_observation_ids:tuple[str,...]=(); conclusion:str|None=None
+    comparison:IncubationComparison|None=None; failure_count:int=0; last_error:str|None=None; schema_version:int=1
+    def __post_init__(self):
+        for name in ("incubation_id","subject","question","initial_observation_id","initial_reasoning_id"):
+            if not str(getattr(self,name)).strip(): raise ValueError(f"{name} must not be empty")
+        if self.created_at.tzinfo is None or self.reactivate_at.tzinfo is None: raise ValueError("incubation timestamps must be aware")
+        if self.reactivated_at is not None and self.reactivated_at.tzinfo is None: raise ValueError("reactivated_at must be aware")
+        if self.reactivate_at<self.created_at: raise ValueError("reactivate_at must not precede created_at")
+        if self.failure_count<0: raise ValueError("failure_count must not be negative")
+        if self.schema_version!=1: raise ValueError("unsupported incubation schema")
