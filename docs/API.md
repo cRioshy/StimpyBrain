@@ -16,6 +16,9 @@ Loopback default: `http://127.0.0.1:8765`. All endpoints use GET; all write meth
 - `/api/stimpy/hypotheses/{id}`
 - `/api/stimpy/hypotheses/{id}/evidence`
 - `/api/stimpy/hypotheses/{id}/evaluation`
+- `/api/stimpy/hypotheses/{id}/reasoning`
+- `/api/stimpy/hypotheses/{id}/critic`
+- `/api/stimpy/hypothesis-incubations`
 - `/api/stimpy/workflow-results/recent`
 - `/api/stimpy/graph`
 - `/api/stimpy/statistics`
@@ -34,5 +37,8 @@ Hypothesis projections are GET-only:
 - `/api/stimpy/hypotheses/{id}` returns one persisted hypothesis.
 - `/api/stimpy/hypotheses/{id}/evidence` returns bounded append-only evidence projections.
 - `/api/stimpy/hypotheses/{id}/evaluation` returns the latest explicitly persisted evaluation.
+- `/api/stimpy/hypotheses/{id}/reasoning` returns the latest immutable hypothesis analysis.
+- `/api/stimpy/hypotheses/{id}/critic` returns its latest persisted self-criticism.
+- `/api/stimpy/hypothesis-incubations` lists bounded incubation projections and accepts an optional status filter.
 
-Creating hypotheses, adding evidence and evaluating are local Python service operations. There is no HTTP write endpoint.
+Creating hypotheses, adding evidence, evaluating, analysing, incubating and reactivating are local Python service operations. There is no HTTP write endpoint.

@@ -213,3 +213,46 @@ class HypothesisEvaluation:
             if not isfinite(value) or value<0: raise ValueError(f"{name} must be finite and non-negative")
         if self.evaluated_at.tzinfo is None: raise ValueError("evaluation timestamp must be aware")
         if self.schema_version!=1: raise ValueError("unsupported hypothesis evaluation schema")
+
+@dataclass(frozen=True)
+class HypothesisReasoning:
+    reasoning_id:str; hypothesis_id:str; evaluation_id:str; reasons:tuple[str,...]; counterarguments:tuple[str,...]
+    missing_information:tuple[str,...]; alternative_explanations:tuple[str,...]; assumptions:tuple[str,...]
+    conclusion:str; confidence:float; uncertainty:float; created_at:datetime; schema_version:int=1
+    def __post_init__(self):
+        if not self.reasoning_id or not self.hypothesis_id or not self.evaluation_id or not self.conclusion.strip(): raise ValueError("hypothesis reasoning identity and conclusion are required")
+        if not self.reasons or not self.counterarguments or not self.missing_information or not self.alternative_explanations: raise ValueError("hypothesis reasoning must retain both sides and limitations")
+        for name in ("confidence","uncertainty"):
+            value=float(getattr(self,name))
+            if not isfinite(value) or not 0.0<=value<=1.0: raise ValueError(f"{name} must be between 0 and 1")
+        if self.created_at.tzinfo is None or self.schema_version!=1: raise ValueError("invalid hypothesis reasoning metadata")
+
+@dataclass(frozen=True)
+class HypothesisCritic:
+    critic_id:str; hypothesis_id:str; reasoning_id:str; issues:tuple[str,...]; suggestions:tuple[str,...]
+    severity:CriticSeverity; bias_warnings:tuple[str,...]; calibration_warning:bool; created_at:datetime; schema_version:int=1
+    def __post_init__(self):
+        if not self.critic_id or not self.hypothesis_id or not self.reasoning_id: raise ValueError("hypothesis critic identities are required")
+        CriticSeverity(self.severity)
+        if self.created_at.tzinfo is None or self.schema_version!=1: raise ValueError("invalid hypothesis critic metadata")
+
+@dataclass(frozen=True)
+class HypothesisIncubationComparison:
+    initial_status:str; final_status:str; status_changed:bool; evidence_ratio_delta:float
+    confidence_delta:float; independent_case_delta:int; contradiction_delta:int
+
+@dataclass(frozen=True)
+class HypothesisIncubationTask:
+    incubation_id:str; hypothesis_id:str; question:str; initial_evaluation_id:str; initial_reasoning_id:str
+    initial_evidence_ids:tuple[str,...]; status:IncubationStatus; created_at:datetime; reactivate_at:datetime
+    reactivated_at:datetime|None=None; final_evaluation_id:str|None=None; final_reasoning_id:str|None=None
+    new_evidence_ids:tuple[str,...]=(); comparison:HypothesisIncubationComparison|None=None; conclusion:str|None=None
+    failure_count:int=0; last_error:str|None=None; schema_version:int=1
+    def __post_init__(self):
+        for name in ("incubation_id","hypothesis_id","question","initial_evaluation_id","initial_reasoning_id"):
+            if not str(getattr(self,name)).strip(): raise ValueError(f"{name} must not be empty")
+        if not self.initial_evidence_ids: raise ValueError("initial hypothesis evidence IDs are required")
+        IncubationStatus(self.status)
+        if self.created_at.tzinfo is None or self.reactivate_at.tzinfo is None or self.reactivate_at<self.created_at: raise ValueError("invalid hypothesis incubation timestamps")
+        if self.reactivated_at is not None and self.reactivated_at.tzinfo is None: raise ValueError("reactivated_at must be aware")
+        if self.failure_count<0 or self.schema_version!=1: raise ValueError("invalid hypothesis incubation metadata")

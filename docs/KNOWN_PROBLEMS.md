@@ -20,3 +20,6 @@
 - `KP-D1-002`: source independence currently collapses Evidence by persisted correlation identities. Timeframe, market-regime coverage and cross-provider dependence need a later reviewed extension.
 - `KP-D1-003`: Hypothesis Reasoning, Self Critic, incubation lifecycle, Inspiration Engine and Knowledge Graph promotion are intentionally not part of D.1.
 - `KP-D1-004`: Hypotheses can currently be created and evaluated only through the local Python service. No interactive CLI is installed and the HTTP API remains read-only.
+- `KP-D2-001`: Hypothesis Reasoning and Critic rules are transparent heuristics, not statistical inference or calibrated probability.
+- `KP-D2-002`: Hypothesis incubation is intentionally explicit; no scheduler marks or reactivates tasks automatically.
+- `KP-D2-003`: The Critic can warn about possible look-ahead or leakage but cannot prove a dataset is clean without a separate reviewed offline-data pipeline.
