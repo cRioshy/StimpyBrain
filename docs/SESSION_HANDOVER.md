@@ -14,6 +14,6 @@
 - Safety: no automatic decision, network write, Pandorick write, broker, order, Telegram, live trading, strategy/model/code mutation, automatic Knowledge promotion or causal claim was added. Polling remains disabled by default.
 - Remaining limitation: actor is a caller-supplied local label, not an authenticated identity. Therefore lifecycle writes must remain local and absent from HTTP.
 - BEFORE backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-08_16-20-52_BEFORE.zip`; 685,865 bytes and 444 entries; archive open and test extraction passed.
-- Git/PR: to be filled after publication; nothing will be merged to `main` by this phase.
-- AFTER backup: to be created after publication and verified.
+- Git/PR: implementation commit `7861c3a` (`Add audited hypothesis lifecycle`) pushed on `agent/stimpy-hypothesis-lifecycle`. Draft PR #8 targets `agent/stimpy-hypothesis-analysis`: `https://github.com/cRioshy/StimpyBrain/pull/8`. Nothing was merged to `main`.
+- AFTER backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-08_16-28-38_AFTER.zip`; created after final handover commit and verified by archive open plus test extraction.
 - Exact next safe step: design an offline threshold-calibration dataset or a local read-only operator view; do not add unauthenticated lifecycle HTTP writes.
