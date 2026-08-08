@@ -16,3 +16,7 @@
 - `KP-C-001`: Pattern grouping currently uses exact market, symbol, decision and caller-supplied market-regime labels. Indicator bucketing and regime inference are not implemented.
 - `KP-C-002`: Pattern confidence is an explainable capped consistency score, not a calibrated probability. Thresholds require later review against an immutable offline dataset.
 - `KP-C-003`: Pattern Learning is intentionally explicit and not connected to the worker. Concurrent independent service callers are not an intended activation mode.
+- `KP-D1-001`: Hypothesis thresholds and confidence are conservative heuristics, not calibrated probabilities. `SUPPORTED` means supported by current stored evidence, not proven or predictive.
+- `KP-D1-002`: source independence currently collapses Evidence by persisted correlation identities. Timeframe, market-regime coverage and cross-provider dependence need a later reviewed extension.
+- `KP-D1-003`: Hypothesis Reasoning, Self Critic, incubation lifecycle, Inspiration Engine and Knowledge Graph promotion are intentionally not part of D.1.
+- `KP-D1-004`: Hypotheses can currently be created and evaluated only through the local Python service. No interactive CLI is installed and the HTTP API remains read-only.

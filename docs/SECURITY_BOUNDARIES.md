@@ -11,4 +11,6 @@
 - Evidence, Reasoning and Critic projections are internal, GET-only and cannot authorize an order or write to Pandorick.
 - Incubation is explicit and local: no background scheduler, worker activation, network callback or confidence increase without new persisted evidence.
 - Pattern Learning is explicit and local: it requires persisted Evidence, preserves contradictions, cannot update models or strategies and has no automatic worker activation.
+- Hypotheses are explicit local research artifacts: bounded text, verified Observation links, append-only Evidence, zero causal claims and no automatic data collection, worker activation, model update or strategy change.
+- Hypothesis HTTP projections are GET-only. Creating, adding Evidence and evaluating are not network write operations.
 - `.env`, databases, observation data, logs, ZIPs, virtual environments and caches are ignored by Git.

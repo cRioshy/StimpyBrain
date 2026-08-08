@@ -34,6 +34,12 @@ class IncubationStatus(StrEnum):
     NEW="NEW"; INCUBATING="INCUBATING"; READY="READY"; RESOLVED="RESOLVED"; FAILED="FAILED"; CANCELLED="CANCELLED"
 class PatternStatus(StrEnum):
     OBSERVED="OBSERVED"; PROVISIONAL="PROVISIONAL"; SUPPORTED="SUPPORTED"; CONTRADICTED="CONTRADICTED"; ARCHIVED="ARCHIVED"
+class HypothesisStatus(StrEnum):
+    NEW="NEW"; INVESTIGATING="INVESTIGATING"; INCUBATING="INCUBATING"; PROVISIONAL="PROVISIONAL"; SUPPORTED="SUPPORTED"; CONTRADICTED="CONTRADICTED"; REJECTED="REJECTED"; ARCHIVED="ARCHIVED"
+class HypothesisCreator(StrEnum):
+    USER="user"; STIMPY="stimpy"; IMPORTED="imported"; SYSTEM="system"
+class HypothesisEvidenceDirection(StrEnum):
+    SUPPORTING="SUPPORTING"; CONTRADICTING="CONTRADICTING"; NEUTRAL="NEUTRAL"
 
 @dataclass(frozen=True)
 class Observation:
@@ -155,3 +161,55 @@ class Pattern:
         if self.created_at.tzinfo is None or self.updated_at.tzinfo is None: raise ValueError("pattern timestamps must be aware")
         if self.updated_at<self.created_at: raise ValueError("pattern updated_at must not precede created_at")
         if self.schema_version!=1: raise ValueError("unsupported pattern schema")
+
+@dataclass(frozen=True)
+class Hypothesis:
+    hypothesis_id:str; statement:str; question:str; created_by:HypothesisCreator; created_at:datetime; updated_at:datetime
+    required_data:tuple[str,...]; status:HypothesisStatus=HypothesisStatus.NEW; confidence:float=0.0
+    evidence_count:int=0; contradiction_count:int=0; neutral_count:int=0; last_evaluated_at:datetime|None=None; schema_version:int=1
+    def __post_init__(self):
+        if not self.hypothesis_id.strip() or not self.statement.strip() or not self.question.strip(): raise ValueError("hypothesis identity, statement and question are required")
+        HypothesisCreator(self.created_by); HypothesisStatus(self.status)
+        if not self.required_data or any(not str(item).strip() for item in self.required_data): raise ValueError("required_data must contain non-empty items")
+        if self.created_at.tzinfo is None or self.updated_at.tzinfo is None: raise ValueError("hypothesis timestamps must be aware")
+        if self.updated_at<self.created_at: raise ValueError("hypothesis updated_at must not precede created_at")
+        if self.last_evaluated_at is not None and self.last_evaluated_at.tzinfo is None: raise ValueError("last_evaluated_at must be aware")
+        if any(isinstance(value,bool) or not isinstance(value,int) or value<0 for value in (self.evidence_count,self.contradiction_count,self.neutral_count)): raise ValueError("hypothesis counts must be non-negative integers")
+        if self.contradiction_count+self.neutral_count>self.evidence_count: raise ValueError("hypothesis counts are inconsistent")
+        if not isfinite(float(self.confidence)) or not 0.0<=float(self.confidence)<=1.0: raise ValueError("hypothesis confidence must be between 0 and 1")
+        if self.schema_version!=1: raise ValueError("unsupported hypothesis schema")
+
+@dataclass(frozen=True)
+class HypothesisEvidence:
+    evidence_id:str; hypothesis_id:str; source:str; source_observation_ids:tuple[str,...]
+    direction:HypothesisEvidenceDirection; strength:float; quality:float; description:str
+    observed_at:datetime; created_at:datetime; independence_key:str; schema_version:int=1
+    def __post_init__(self):
+        for name in ("evidence_id","hypothesis_id","source","description","independence_key"):
+            if not str(getattr(self,name)).strip(): raise ValueError(f"{name} must not be empty")
+        if not self.source_observation_ids or any(not str(item).strip() for item in self.source_observation_ids): raise ValueError("source observation IDs are required")
+        HypothesisEvidenceDirection(self.direction)
+        for name in ("strength","quality"):
+            value=float(getattr(self,name))
+            if not isfinite(value) or not 0.0<=value<=1.0: raise ValueError(f"{name} must be between 0 and 1")
+        if self.observed_at.tzinfo is None or self.created_at.tzinfo is None: raise ValueError("hypothesis evidence timestamps must be aware")
+        if self.schema_version!=1: raise ValueError("unsupported hypothesis evidence schema")
+
+@dataclass(frozen=True)
+class HypothesisEvaluation:
+    evaluation_id:str; hypothesis_id:str; status:HypothesisStatus; evidence_ratio:float; confidence:float
+    supporting_count:int; contradicting_count:int; neutral_count:int; weighted_support:float
+    weighted_contradiction:float; evidence_quality:float; uncertainty:float; source_count:int
+    independent_case_count:int; explanation:str; evaluated_at:datetime; schema_version:int=1
+    def __post_init__(self):
+        if not self.evaluation_id.strip() or not self.hypothesis_id.strip() or not self.explanation.strip(): raise ValueError("evaluation identity and explanation are required")
+        HypothesisStatus(self.status)
+        if any(isinstance(value,bool) or not isinstance(value,int) or value<0 for value in (self.supporting_count,self.contradicting_count,self.neutral_count,self.source_count,self.independent_case_count)): raise ValueError("evaluation counts must be non-negative integers")
+        for name in ("evidence_ratio","confidence","evidence_quality","uncertainty"):
+            value=float(getattr(self,name))
+            if not isfinite(value) or not 0.0<=value<=1.0: raise ValueError(f"{name} must be between 0 and 1")
+        for name in ("weighted_support","weighted_contradiction"):
+            value=float(getattr(self,name))
+            if not isfinite(value) or value<0: raise ValueError(f"{name} must be finite and non-negative")
+        if self.evaluated_at.tzinfo is None: raise ValueError("evaluation timestamp must be aware")
+        if self.schema_version!=1: raise ValueError("unsupported hypothesis evaluation schema")
