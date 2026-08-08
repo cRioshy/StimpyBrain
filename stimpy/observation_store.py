@@ -132,6 +132,12 @@ CREATE TABLE IF NOT EXISTS hypothesis_lifecycle_events(
  FOREIGN KEY(hypothesis_id) REFERENCES hypotheses(hypothesis_id));
 CREATE INDEX IF NOT EXISTS ix_hypothesis_lifecycle_hypothesis_time ON hypothesis_lifecycle_events(hypothesis_id,created_at DESC);
 """
+REPLAY_SCHEMA="""
+CREATE TABLE IF NOT EXISTS replay_runs(run_id TEXT PRIMARY KEY,dataset_hash TEXT NOT NULL,symbol TEXT NOT NULL,timeframe TEXT NOT NULL,row_count INTEGER NOT NULL,case_count INTEGER NOT NULL,supporting_count INTEGER NOT NULL,contradicting_count INTEGER NOT NULL,neutral_count INTEGER NOT NULL,started_at TEXT NOT NULL,completed_at TEXT NOT NULL,status TEXT NOT NULL,configuration TEXT NOT NULL,schema_version INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS replay_cases(case_id TEXT PRIMARY KEY,run_id TEXT NOT NULL,hypothesis_key TEXT NOT NULL,split TEXT NOT NULL,signal_at TEXT NOT NULL,outcome_at TEXT NOT NULL,direction TEXT NOT NULL,outcome TEXT NOT NULL,entry_price REAL NOT NULL,exit_price REAL NOT NULL,return_value REAL NOT NULL,features TEXT NOT NULL,schema_version INTEGER NOT NULL,FOREIGN KEY(run_id) REFERENCES replay_runs(run_id));
+CREATE INDEX IF NOT EXISTS ix_replay_runs_completed ON replay_runs(completed_at DESC);
+CREATE INDEX IF NOT EXISTS ix_replay_cases_run_split ON replay_cases(run_id,split,hypothesis_key);
+"""
 class ObservationStore:
     def __init__(self,database_path,data_dir=None,rotation_bytes=134217728):
         self.path=Path(database_path); self.data_dir=Path(data_dir or self.path.parents[1]); self.observations_dir=self.data_dir/"observations"
@@ -169,6 +175,9 @@ class ObservationStore:
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(8,datetime.now(UTC).isoformat()))
             self._db.executescript(HYPOTHESIS_LIFECYCLE_SCHEMA)
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(9,datetime.now(UTC).isoformat()))
+            self._db.executescript(REPLAY_SCHEMA)
+            self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(10,datetime.now(UTC).isoformat()))
+            self._db.execute("PRAGMA optimize")
     @property
     def foreign_keys_enabled(self): return bool(self._db.execute("PRAGMA foreign_keys").fetchone()[0])
     @property
@@ -219,7 +228,7 @@ class ObservationStore:
             row["content_hash"],int(row["schema_version"]),row.get("decision"),row.get("confidence"),row.get("outcome"),row.get("profit"))
             for row in self.list(limit)]
     def count(self,table="observations"):
-        if table not in {"observations","memories","workflow_results","knowledge_entries","evidence_results","reasoning_results","critic_results","incubation_tasks","patterns","pattern_cases","hypotheses","hypothesis_evidence","hypothesis_evaluations","hypothesis_reasoning","hypothesis_critics","hypothesis_incubations","hypothesis_lifecycle_events"}: raise ValueError("invalid table")
+        if table not in {"observations","memories","workflow_results","knowledge_entries","evidence_results","reasoning_results","critic_results","incubation_tasks","patterns","pattern_cases","hypotheses","hypothesis_evidence","hypothesis_evaluations","hypothesis_reasoning","hypothesis_critics","hypothesis_incubations","hypothesis_lifecycle_events","replay_runs","replay_cases"}: raise ValueError("invalid table")
         return int(self._db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
     def upsert_memory(self,m:MemoryRecord):
         with self._lock,self._db:
@@ -424,6 +433,25 @@ class ObservationStore:
         limit=max(1,min(int(limit),1000));offset=max(0,int(offset)); rows=self._db.execute("SELECT * FROM hypothesis_lifecycle_events WHERE hypothesis_id=? ORDER BY created_at DESC,rowid DESC LIMIT ? OFFSET ?",(hypothesis_id,limit,offset)).fetchall(); return [self._hypothesis_lifecycle_dict(row) for row in rows]
     def count_hypothesis_lifecycle_events(self,hypothesis_id):
         return int(self._db.execute("SELECT COUNT(*) FROM hypothesis_lifecycle_events WHERE hypothesis_id=?",(hypothesis_id,)).fetchone()[0])
+    def save_replay(self,run,cases):
+        with self._lock,self._db:
+            self._db.execute("INSERT OR IGNORE INTO replay_runs VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(run["run_id"],run["dataset_hash"],run["symbol"],run["timeframe"],run["row_count"],run["case_count"],run["supporting_count"],run["contradicting_count"],run["neutral_count"],run["started_at"],run["completed_at"],run["status"],json.dumps(run["configuration"],sort_keys=True),1))
+            self._db.executemany("INSERT OR IGNORE INTO replay_cases VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",[(c["case_id"],run["run_id"],c["hypothesis_key"],c["split"],c["signal_at"],c["outcome_at"],c["direction"],c["outcome"],c["entry_price"],c["exit_price"],c["return_value"],json.dumps(c["features"],sort_keys=True),1) for c in cases])
+        return self.get_replay_run(run["run_id"])
+    def get_replay_run(self,run_id):
+        row=self._db.execute("SELECT * FROM replay_runs WHERE run_id=?",(run_id,)).fetchone(); return self._replay_run_dict(row) if row else None
+    def list_replay_runs(self,limit=100,offset=0):
+        rows=self._db.execute("SELECT * FROM replay_runs ORDER BY completed_at DESC LIMIT ? OFFSET ?",(max(1,min(int(limit),100)),max(0,int(offset)))).fetchall(); return [self._replay_run_dict(row) for row in rows]
+    def list_replay_cases(self,run_id,limit=100,offset=0,split=None):
+        if split is None: rows=self._db.execute("SELECT * FROM replay_cases WHERE run_id=? ORDER BY signal_at,hypothesis_key LIMIT ? OFFSET ?",(run_id,max(1,min(int(limit),100)),max(0,int(offset)))).fetchall()
+        else: rows=self._db.execute("SELECT * FROM replay_cases WHERE run_id=? AND split=? ORDER BY signal_at,hypothesis_key LIMIT ? OFFSET ?",(run_id,str(split).upper(),max(1,min(int(limit),100)),max(0,int(offset)))).fetchall()
+        return [self._replay_case_dict(row) for row in rows]
+    @staticmethod
+    def _replay_run_dict(row):
+        item=dict(row); item["configuration"]=json.loads(item["configuration"]); return item
+    @staticmethod
+    def _replay_case_dict(row):
+        item=dict(row); item["features"]=json.loads(item["features"]); return item
     def save_hypothesis_reasoning(self,result:HypothesisReasoning):
         with self._lock,self._db: self._db.execute("INSERT OR IGNORE INTO hypothesis_reasoning VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",(result.reasoning_id,result.hypothesis_id,result.evaluation_id,json.dumps(result.reasons),json.dumps(result.counterarguments),json.dumps(result.missing_information),json.dumps(result.alternative_explanations),json.dumps(result.assumptions),result.conclusion,result.confidence,result.uncertainty,result.created_at.isoformat(),result.schema_version))
         return self.get_hypothesis_reasoning(result.reasoning_id)

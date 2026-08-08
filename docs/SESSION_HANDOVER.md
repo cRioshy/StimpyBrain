@@ -1,5 +1,15 @@
 # Session handover
 
+## Phase E.1.1 update — 2026-08-08
+
+- Added explicit local `OfflineReplayService` for bounded chronological OHLCV CSV files and ten transparent technical rule keys.
+- Added strict OHLCV/time validation, stable dataset/run identities, 60/20/20 chronological splits and prevention of outcome leakage across split boundaries.
+- SQLite schema v10 adds immutable `replay_runs` and `replay_cases`; GET-only run/case projections were added and `build_app()` exposes `offline_replay`.
+- Replay cases are research outputs only and are not automatically promoted into the 20 Hypotheses, Knowledge or trading behavior.
+- Tests: replay 3/3 and full suite 82/82 passed; compile and diff checks passed. The first targeted run exposed one SQL placeholder mismatch, which was fixed. The first full run required six expected schema assertions to move from 9 to 10.
+- Verified BEFORE backup including the live database and 20 Hypotheses: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-08_21-09-22_BEFORE.zip` (848,193 bytes, 528 entries). An earlier partial archive at `...21-08-22_BEFORE.zip` is not the authoritative backup.
+- Branch: `agent/stimpy-offline-replay`, based on D.4. Exact next step: run a reviewed real BTCUSD 15-minute CSV, inspect cases, then design explicit Evidence promotion.
+
 - Date/time: 2026-08-08 CEST.
 - Goal: implement Phase D.4 local responsive read-only Hypothesis Controlcenter without adding unauthenticated write controls.
 - Starting point: clean `agent/stimpy-hypothesis-lifecycle` at `8df5cc6`; baseline compile succeeded and 76/76 tests passed.

@@ -17,7 +17,8 @@ Active only when started: Stimpy worker and local API. Pandorick polling additio
 - `stimpy/http_client.py`: local GET-only transport with timeout/retry/backoff.
 - `stimpy/normalizer.py`: schema, timestamps, stable IDs/hashes, limits and redaction.
 - `stimpy/observer.py`: strict normalization of caller-supplied prototype payloads.
-- `stimpy/observation_store.py`: rotating JSONL and SQLite schema v9.
+- `stimpy/observation_store.py`: rotating JSONL and SQLite schema v10.
+- `stimpy/offline_replay.py`: explicit chronological OHLCV CSV replay with stable runs and split-safe cases.
 - `stimpy/evidence.py`, `reasoning.py`, `self_critic.py`: pure heuristic analysis.
 - `stimpy/incubation_service.py`: explicit persistent task creation, readiness, reactivation, comparison, cancellation and bounded failure handling.
 - `stimpy/pattern_learning.py`: explicit persisted comparable-case grouping, regime separation, contradiction counting and thresholded Pattern status.
@@ -40,7 +41,7 @@ Phase D.1 stores research questions as Hypotheses, never as facts. D.2 adds immu
 
 ## Storage and commands
 
-`stimpy_data/{observations,memory,state,database,logs}` is local and Git-ignored. Hypothesis storage uses `hypotheses`, `hypothesis_evidence`, `hypothesis_evaluations`, `hypothesis_reasoning`, `hypothesis_critics`, `hypothesis_incubations` and `hypothesis_lifecycle_events`. SQLite foreign keys are enabled and Stimpy schema migration is version 9. Tests: `python -m compileall -q stimpy tests`; `python -m unittest discover -s tests -v`.
+`stimpy_data/{observations,memory,state,database,logs}` is local and Git-ignored. Replay additionally uses immutable `replay_runs` and `replay_cases`. SQLite foreign keys are enabled and Stimpy schema migration is version 10. Tests: `python -m compileall -q stimpy tests`; `python -m unittest discover -s tests -v`.
 
 ## Risks
 

@@ -4,7 +4,7 @@ Completed: GET-only Pandorick client, persistent observation/evidence foundation
 
 Next safe steps:
 
-1. Calibrate Evidence, Pattern and Hypothesis thresholds only against a reviewed, immutable offline dataset and keep scores distinct from probability.
+1. Review E.1.1 replay cases, then design an explicit audited mapping into Hypothesis Evidence; never promote cases automatically.
 2. Add bounded dashboard pagination only when more than 100 Hypotheses become a real local use case.
 3. Design future Inspiration or Knowledge Graph promotion as a separate reviewed phase with no automatic operational feedback.
 4. Review this implementation and explicitly approve activation before setting `STIMPY_PANDORICK_ENABLED=true`.
