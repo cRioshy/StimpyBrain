@@ -4,7 +4,7 @@ import json,os,sqlite3
 from datetime import UTC,datetime
 from pathlib import Path
 from threading import RLock
-from .models import CriticResult,CriticSeverity,EvidenceResult,Hypothesis,HypothesisCreator,HypothesisCritic,HypothesisEvaluation,HypothesisEvidence,HypothesisEvidenceDirection,HypothesisIncubationComparison,HypothesisIncubationTask,HypothesisReasoning,HypothesisStatus,IncubationComparison,IncubationStatus,IncubationTask,KnowledgeEntry,KnowledgeStatus,MemoryRecord,Observation,Pattern,PatternStatus,ReasoningResult,parse_timestamp
+from .models import CriticResult,CriticSeverity,EvidenceResult,Hypothesis,HypothesisCreator,HypothesisCritic,HypothesisEvaluation,HypothesisEvidence,HypothesisEvidenceDirection,HypothesisIncubationComparison,HypothesisIncubationTask,HypothesisLifecycleAction,HypothesisLifecycleEvent,HypothesisReasoning,HypothesisStatus,IncubationComparison,IncubationStatus,IncubationTask,KnowledgeEntry,KnowledgeStatus,MemoryRecord,Observation,Pattern,PatternStatus,ReasoningResult,parse_timestamp
 
 SCHEMA="""
 CREATE TABLE IF NOT EXISTS stimpy_schema_migrations(version INTEGER PRIMARY KEY,applied_at TEXT NOT NULL);
@@ -125,6 +125,13 @@ CREATE INDEX IF NOT EXISTS ix_hypothesis_reasoning_created ON hypothesis_reasoni
 CREATE INDEX IF NOT EXISTS ix_hypothesis_critics_created ON hypothesis_critics(created_at DESC);
 CREATE INDEX IF NOT EXISTS ix_hypothesis_incubations_status_time ON hypothesis_incubations(status,reactivate_at);
 """
+HYPOTHESIS_LIFECYCLE_SCHEMA="""
+CREATE TABLE IF NOT EXISTS hypothesis_lifecycle_events(
+ event_id TEXT PRIMARY KEY,hypothesis_id TEXT NOT NULL,action TEXT NOT NULL CHECK(action IN ('REJECT','ARCHIVE')),
+ from_status TEXT NOT NULL,to_status TEXT NOT NULL,reason TEXT NOT NULL,actor TEXT NOT NULL,created_at TEXT NOT NULL,schema_version INTEGER NOT NULL,
+ FOREIGN KEY(hypothesis_id) REFERENCES hypotheses(hypothesis_id));
+CREATE INDEX IF NOT EXISTS ix_hypothesis_lifecycle_hypothesis_time ON hypothesis_lifecycle_events(hypothesis_id,created_at DESC);
+"""
 class ObservationStore:
     def __init__(self,database_path,data_dir=None,rotation_bytes=134217728):
         self.path=Path(database_path); self.data_dir=Path(data_dir or self.path.parents[1]); self.observations_dir=self.data_dir/"observations"
@@ -160,6 +167,8 @@ class ObservationStore:
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(7,datetime.now(UTC).isoformat()))
             self._db.executescript(HYPOTHESIS_ANALYSIS_SCHEMA)
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(8,datetime.now(UTC).isoformat()))
+            self._db.executescript(HYPOTHESIS_LIFECYCLE_SCHEMA)
+            self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(9,datetime.now(UTC).isoformat()))
     @property
     def foreign_keys_enabled(self): return bool(self._db.execute("PRAGMA foreign_keys").fetchone()[0])
     @property
@@ -210,7 +219,7 @@ class ObservationStore:
             row["content_hash"],int(row["schema_version"]),row.get("decision"),row.get("confidence"),row.get("outcome"),row.get("profit"))
             for row in self.list(limit)]
     def count(self,table="observations"):
-        if table not in {"observations","memories","workflow_results","knowledge_entries","evidence_results","reasoning_results","critic_results","incubation_tasks","patterns","pattern_cases","hypotheses","hypothesis_evidence","hypothesis_evaluations","hypothesis_reasoning","hypothesis_critics","hypothesis_incubations"}: raise ValueError("invalid table")
+        if table not in {"observations","memories","workflow_results","knowledge_entries","evidence_results","reasoning_results","critic_results","incubation_tasks","patterns","pattern_cases","hypotheses","hypothesis_evidence","hypothesis_evaluations","hypothesis_reasoning","hypothesis_critics","hypothesis_incubations","hypothesis_lifecycle_events"}: raise ValueError("invalid table")
         return int(self._db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
     def upsert_memory(self,m:MemoryRecord):
         with self._lock,self._db:
@@ -398,6 +407,23 @@ class ObservationStore:
             cursor=self._db.execute("UPDATE hypotheses SET status=?,updated_at=? WHERE hypothesis_id=?",(HypothesisStatus(status).value,parse_timestamp(updated_at).isoformat(),hypothesis_id))
             if cursor.rowcount!=1: raise KeyError("unknown hypothesis")
         return self.get_hypothesis(hypothesis_id)
+    def apply_hypothesis_lifecycle_event(self,event:HypothesisLifecycleEvent):
+        with self._lock,self._db:
+            current=self._db.execute("SELECT status FROM hypotheses WHERE hypothesis_id=?",(event.hypothesis_id,)).fetchone()
+            if current is None: raise KeyError("unknown hypothesis")
+            if current["status"]!=event.from_status.value: raise ValueError("hypothesis status changed before lifecycle decision could be stored")
+            self._db.execute("INSERT INTO hypothesis_lifecycle_events VALUES(?,?,?,?,?,?,?,?,?)",(event.event_id,event.hypothesis_id,event.action.value,event.from_status.value,event.to_status.value,event.reason,event.actor,event.created_at.isoformat(),event.schema_version))
+            cursor=self._db.execute("UPDATE hypotheses SET status=?,updated_at=? WHERE hypothesis_id=? AND status=?",(event.to_status.value,event.created_at.isoformat(),event.hypothesis_id,event.from_status.value))
+            if cursor.rowcount!=1: raise ValueError("hypothesis lifecycle transition failed")
+        return self.get_hypothesis_lifecycle_event(event.event_id)
+    def get_hypothesis_lifecycle_event(self,event_id):
+        row=self._db.execute("SELECT * FROM hypothesis_lifecycle_events WHERE event_id=?",(event_id,)).fetchone(); return self._hypothesis_lifecycle_from_row(row) if row else None
+    def latest_hypothesis_lifecycle_event(self,hypothesis_id):
+        row=self._db.execute("SELECT * FROM hypothesis_lifecycle_events WHERE hypothesis_id=? ORDER BY created_at DESC,rowid DESC LIMIT 1",(hypothesis_id,)).fetchone(); return self._hypothesis_lifecycle_from_row(row) if row else None
+    def list_hypothesis_lifecycle_events(self,hypothesis_id,limit=100,offset=0):
+        limit=max(1,min(int(limit),1000));offset=max(0,int(offset)); rows=self._db.execute("SELECT * FROM hypothesis_lifecycle_events WHERE hypothesis_id=? ORDER BY created_at DESC,rowid DESC LIMIT ? OFFSET ?",(hypothesis_id,limit,offset)).fetchall(); return [self._hypothesis_lifecycle_dict(row) for row in rows]
+    def count_hypothesis_lifecycle_events(self,hypothesis_id):
+        return int(self._db.execute("SELECT COUNT(*) FROM hypothesis_lifecycle_events WHERE hypothesis_id=?",(hypothesis_id,)).fetchone()[0])
     def save_hypothesis_reasoning(self,result:HypothesisReasoning):
         with self._lock,self._db: self._db.execute("INSERT OR IGNORE INTO hypothesis_reasoning VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",(result.reasoning_id,result.hypothesis_id,result.evaluation_id,json.dumps(result.reasons),json.dumps(result.counterarguments),json.dumps(result.missing_information),json.dumps(result.alternative_explanations),json.dumps(result.assumptions),result.conclusion,result.confidence,result.uncertainty,result.created_at.isoformat(),result.schema_version))
         return self.get_hypothesis_reasoning(result.reasoning_id)
@@ -459,6 +485,11 @@ class ObservationStore:
     @staticmethod
     def _hypothesis_reasoning_from_row(row):
         return HypothesisReasoning(row["reasoning_id"],row["hypothesis_id"],row["evaluation_id"],tuple(json.loads(row["reasons"])),tuple(json.loads(row["counterarguments"])),tuple(json.loads(row["missing_information"])),tuple(json.loads(row["alternative_explanations"])),tuple(json.loads(row["assumptions"])),row["conclusion"],float(row["confidence"]),float(row["uncertainty"]),parse_timestamp(row["created_at"]),int(row["schema_version"]))
+    @staticmethod
+    def _hypothesis_lifecycle_from_row(row):
+        return HypothesisLifecycleEvent(row["event_id"],row["hypothesis_id"],HypothesisLifecycleAction(row["action"]),HypothesisStatus(row["from_status"]),HypothesisStatus(row["to_status"]),row["reason"],row["actor"],parse_timestamp(row["created_at"]),int(row["schema_version"]))
+    @staticmethod
+    def _hypothesis_lifecycle_dict(row): return dict(row)
     @classmethod
     def _hypothesis_reasoning_dict(cls,row):
         item=dict(row)

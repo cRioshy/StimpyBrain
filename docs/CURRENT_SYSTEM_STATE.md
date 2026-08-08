@@ -6,7 +6,7 @@ Date: 2026-08-01. StimpyBrain is a standalone Python service. Composition occurs
 
 Verified Pandorick Rick API GET envelopes flow through `ReadOnlyHttpClient -> ObservationAdapter -> ObservationNormalizer -> ObservationStore`. The store appends sanitized raw records to rotating JSONL and maintains a synchronized SQLite index. New records feed evidence-counted Memory, descriptive Learning and the internal observe-only Workflow Gate. The architecture Knowledge Graph and local HTTP API expose bounded projections.
 
-The isolated prototype flows through `Observer -> Memory facade -> EvidenceEngine -> ReasoningEngine -> SelfCritic -> KnowledgeGraph`. It reuses the same JSONL/SQLite store. Evidence, Reasoning, Critic, Incubation, Pattern, Hypothesis and Knowledge records have stable IDs and are stored idempotently in SQLite schema v8. Incubation, Pattern Learning and Hypothesis analysis advance only through explicit service calls; no background scheduler or worker connection exists.
+The isolated prototype flows through `Observer -> Memory facade -> EvidenceEngine -> ReasoningEngine -> SelfCritic -> KnowledgeGraph`. It reuses the same JSONL/SQLite store. Evidence, Reasoning, Critic, Incubation, Pattern, Hypothesis, Lifecycle and Knowledge records have stable IDs and are stored idempotently in SQLite schema v9. Incubation, Pattern Learning and Hypothesis lifecycle operations advance only through explicit service calls; no background scheduler or worker connection exists.
 
 Active only when started: Stimpy worker and local API. Pandorick polling additionally requires `STIMPY_PANDORICK_ENABLED=true`; its default is false. There are no broker, order, Telegram or Pandorick-write components.
 
@@ -17,13 +17,14 @@ Active only when started: Stimpy worker and local API. Pandorick polling additio
 - `stimpy/http_client.py`: local GET-only transport with timeout/retry/backoff.
 - `stimpy/normalizer.py`: schema, timestamps, stable IDs/hashes, limits and redaction.
 - `stimpy/observer.py`: strict normalization of caller-supplied prototype payloads.
-- `stimpy/observation_store.py`: rotating JSONL and SQLite schema v8.
+- `stimpy/observation_store.py`: rotating JSONL and SQLite schema v9.
 - `stimpy/evidence.py`, `reasoning.py`, `self_critic.py`: pure heuristic analysis.
 - `stimpy/incubation_service.py`: explicit persistent task creation, readiness, reactivation, comparison, cancellation and bounded failure handling.
 - `stimpy/pattern_learning.py`: explicit persisted comparable-case grouping, regime separation, contradiction counting and thresholded Pattern status.
 - `stimpy/hypothesis_engine.py`: local creation, append-only evidence linkage, independence deduplication and conservative idempotent evaluation.
 - `stimpy/prototype.py`: isolated prototype orchestration and Incubation protocol boundary.
 - `stimpy/hypothesis_analysis.py`: immutable Hypothesis Reasoning/Critic and explicit evidence-gated incubation.
+- `stimpy/hypothesis_lifecycle.py`: explicit audited reject/archive commands and terminal-state enforcement.
 - `stimpy/demo_reasoning_prototype.py`: temporary, simulated local demo.
 - `stimpy/worker.py`: single in-process instance, atomic state and bounded shutdown.
 - `stimpy/api.py`: bounded static and dynamic GET projections, including Hypothesis Reasoning, Critic and incubation; all write methods return 405.
@@ -34,11 +35,11 @@ Workflow topology remains exactly `DataQuality -> Features -> Prediction -> Mome
 
 Memory records store subject/relation/object, source observation IDs, evidence and contradiction counts, bounded confidence, status and `causal=false`. The older `LearningService` remains a descriptive memory summary. Phase-C `PatternLearningService` separately groups persisted independent cases by market, symbol, decision and market regime; model updates and causal claims remain zero. Prototype Evidence exposes a separate quality score. Reasoning separates caller confidence from bounded reasoning confidence and records assumptions and missing information. Self Critic stores severity and calibration warnings. Reprocessing the same observation or Pattern case is idempotent.
 
-Phase D.1 stores user/system research questions as Hypotheses, never as facts. Phase D.2 adds immutable two-sided Reasoning and Self Critic records plus explicit incubation. Each Evidence record references existing Observations. Reactivation requires a due task and new independent Evidence. Inspiration and Knowledge Graph promotion remain disconnected.
+Phase D.1 stores research questions as Hypotheses, never as facts. D.2 adds immutable Reasoning/Critic records and explicit incubation. D.3 adds reasoned local rejection and archival with append-only audit events. Terminal Hypotheses cannot receive new Evidence or analysis. Inspiration and Knowledge Graph promotion remain disconnected.
 
 ## Storage and commands
 
-`stimpy_data/{observations,memory,state,database,logs}` is local and Git-ignored. Observations use rotating append-only JSONL plus SQLite metadata offsets. Hypothesis analysis additionally uses `hypotheses`, `hypothesis_evidence`, `hypothesis_evaluations`, `hypothesis_reasoning`, `hypothesis_critics` and `hypothesis_incubations`. SQLite foreign keys are enabled and Stimpy schema migration is version 8. Tests: `python -m compileall -q stimpy tests`; `python -m unittest discover -s tests -v`. Demo: `python -m stimpy.demo_reasoning_prototype`.
+`stimpy_data/{observations,memory,state,database,logs}` is local and Git-ignored. Hypothesis storage uses `hypotheses`, `hypothesis_evidence`, `hypothesis_evaluations`, `hypothesis_reasoning`, `hypothesis_critics`, `hypothesis_incubations` and `hypothesis_lifecycle_events`. SQLite foreign keys are enabled and Stimpy schema migration is version 9. Tests: `python -m compileall -q stimpy tests`; `python -m unittest discover -s tests -v`.
 
 ## Risks
 

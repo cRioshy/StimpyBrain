@@ -34,3 +34,5 @@ Phase-D.2 schema v8 adds:
 - `hypothesis_incubations`: initial Evaluation, Reasoning and Evidence identities, explicit status/due time, later new Evidence identities, final Evaluation/Reasoning and comparison deltas.
 
 Incubation time alone changes no conclusion or confidence. Reactivation requires a due `READY` task and at least one independent Evidence identity absent from the initial snapshot. Both analyses survive restart.
+
+Phase-D.3 schema v9 adds `hypothesis_lifecycle_events`. Every row stores a stable event ID, Hypothesis ID, `REJECT|ARCHIVE` action, previous and resulting status, bounded reason, actor and UTC timestamp. Events are append-only. The status change and audit insert occur in one SQLite transaction. `REJECTED` and `ARCHIVED` are terminal for evidence, evaluation, analysis and incubation reactivation; a rejected Hypothesis may only be archived for historical retention.

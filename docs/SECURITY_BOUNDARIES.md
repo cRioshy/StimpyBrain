@@ -15,4 +15,6 @@
 - Hypothesis HTTP projections are GET-only. Creating, adding Evidence and evaluating are not network write operations.
 - Hypothesis Reasoning, Critic and incubation are local and deterministic. Reactivation requires new independent persisted Evidence; elapsed time alone cannot improve a result.
 - No scheduler, worker, Inspiration Engine or Knowledge promotion is connected to D.2.
+- Reject/archive commands require bounded non-secret reason and actor text, execute locally and store an immutable audit event atomically with the status change.
+- Terminal Hypotheses fail closed against later Evidence, evaluation, analysis and incubation reactivation. Lifecycle writes are not exposed through HTTP.
 - `.env`, databases, observation data, logs, ZIPs, virtual environments and caches are ignored by Git.

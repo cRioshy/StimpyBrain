@@ -256,3 +256,19 @@ class HypothesisIncubationTask:
         if self.created_at.tzinfo is None or self.reactivate_at.tzinfo is None or self.reactivate_at<self.created_at: raise ValueError("invalid hypothesis incubation timestamps")
         if self.reactivated_at is not None and self.reactivated_at.tzinfo is None: raise ValueError("reactivated_at must be aware")
         if self.failure_count<0 or self.schema_version!=1: raise ValueError("invalid hypothesis incubation metadata")
+
+class HypothesisLifecycleAction(StrEnum):
+    REJECT="REJECT"
+    ARCHIVE="ARCHIVE"
+
+@dataclass(frozen=True)
+class HypothesisLifecycleEvent:
+    event_id:str; hypothesis_id:str; action:HypothesisLifecycleAction; from_status:HypothesisStatus
+    to_status:HypothesisStatus; reason:str; actor:str; created_at:datetime; schema_version:int=1
+    def __post_init__(self):
+        if not self.event_id or not self.hypothesis_id: raise ValueError("lifecycle identities are required")
+        action=HypothesisLifecycleAction(self.action); HypothesisStatus(self.from_status); target=HypothesisStatus(self.to_status)
+        if not self.reason.strip() or not self.actor.strip(): raise ValueError("lifecycle reason and actor are required")
+        if action is HypothesisLifecycleAction.REJECT and target is not HypothesisStatus.REJECTED: raise ValueError("reject must result in REJECTED")
+        if action is HypothesisLifecycleAction.ARCHIVE and target is not HypothesisStatus.ARCHIVED: raise ValueError("archive must result in ARCHIVED")
+        if self.created_at.tzinfo is None or self.schema_version!=1: raise ValueError("invalid lifecycle metadata")

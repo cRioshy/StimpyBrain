@@ -16,6 +16,7 @@ class HypothesisAnalysisService:
     def analyse(self,hypothesis_id):
         hypothesis=self.store.get_hypothesis(hypothesis_id)
         if hypothesis is None: raise KeyError("unknown hypothesis")
+        if hypothesis.status in {HypothesisStatus.REJECTED,HypothesisStatus.ARCHIVED}: raise ValueError("terminal hypothesis cannot be analysed")
         evaluation=self.store.latest_hypothesis_evaluation_model(hypothesis_id) or self.engine.evaluate_hypothesis(hypothesis_id)
         existing=self.store.get_hypothesis_reasoning_for_evaluation(evaluation.evaluation_id)
         if existing is not None: return existing,self.store.get_hypothesis_critic_for_reasoning(existing.reasoning_id)
@@ -64,6 +65,8 @@ class HypothesisAnalysisService:
         task=self.store.get_hypothesis_incubation(incubation_id)
         if task is None: raise KeyError("unknown hypothesis incubation")
         if task.status is IncubationStatus.RESOLVED: return task
+        hypothesis=self.store.get_hypothesis(task.hypothesis_id)
+        if hypothesis.status in {HypothesisStatus.REJECTED,HypothesisStatus.ARCHIVED}: raise ValueError("terminal hypothesis cannot be reactivated")
         now=parse_timestamp(now or self.clock())
         if task.status is IncubationStatus.INCUBATING and now>=task.reactivate_at: self.mark_ready(now); task=self.store.get_hypothesis_incubation(incubation_id)
         if task.status is not IncubationStatus.READY: raise ValueError("hypothesis incubation is not ready")
