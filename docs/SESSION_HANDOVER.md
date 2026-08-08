@@ -14,6 +14,6 @@
 - Safety: no automatic decision, network write, Pandorick write, broker, order, Telegram, live trading, strategy/model/code mutation, Knowledge promotion or causal claim was added. Polling remains disabled by default.
 - Limitations: the view loads bounded pages of at most 100 records and has no pagination UI. It must remain loopback-only because the API has no authentication.
 - BEFORE backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-08_16-44-46_BEFORE.zip`; 771,877 bytes and 487 entries; archive open and test extraction passed.
-- Git/PR: to be filled after publication; nothing will be merged to `main` by this phase.
-- AFTER backup: to be created after publication and verified.
+- Git/PR: implementation commit `d684c6b` (`Add read-only hypothesis controlcenter`) pushed on `agent/stimpy-hypothesis-controlcenter`. Draft PR #9 targets `agent/stimpy-hypothesis-lifecycle`: `https://github.com/cRioshy/StimpyBrain/pull/9`. Nothing was merged to `main`.
+- AFTER backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-08_16-51-56_AFTER.zip`; created after final handover commit and verified by archive open plus test extraction.
 - Exact next safe step: collect and review an immutable offline calibration dataset; add dashboard pagination only when local record volume requires it.
