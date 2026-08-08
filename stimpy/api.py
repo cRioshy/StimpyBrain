@@ -33,10 +33,12 @@ class ReadOnlyAPI:
     def hypothesis_incubations(self,limit=100,offset=0,status=None): return {"items":self.store.list_hypothesis_incubations(limit,offset,status),"limit":limit,"offset":offset,"total":self.store.count("hypothesis_incubations")}
     def replay_runs(self,limit=100,offset=0): return {"items":self.store.list_replay_runs(limit,offset),"limit":limit,"offset":offset,"total":self.store.count("replay_runs")}
     def replay_cases(self,run_id,limit=100,offset=0,split=None): return {"items":self.store.list_replay_cases(run_id,limit,offset,split),"limit":limit,"offset":offset} if self.store.get_replay_run(run_id) else None
+    def training_runs(self,limit=100,offset=0): return {"items":self.store.list_pandorick_training_runs(limit,offset),"limit":limit,"offset":offset,"total":self.store.count("pandorick_training_runs")}
+    def training_metrics(self,run_id,limit=100,offset=0,hypothesis_key=None,split=None): return {"items":self.store.list_pandorick_training_metrics(run_id,limit,offset,hypothesis_key,split),"limit":limit,"offset":offset} if self.store.get_pandorick_training_run(run_id) else None
     def knowledge_graph(self): return self.graph()
     def statistics(self): return {"observations":self.store.count(),"memories":self.store.count("memories"),"workflow_results":self.store.count("workflow_results"),"evidence_results":self.store.count("evidence_results"),"reasoning_results":self.store.count("reasoning_results"),"critic_results":self.store.count("critic_results"),"incubation_tasks":self.store.count("incubation_tasks"),"patterns":self.store.count("patterns"),"pattern_cases":self.store.count("pattern_cases"),"hypotheses":self.store.count("hypotheses"),"hypothesis_evidence":self.store.count("hypothesis_evidence"),"hypothesis_evaluations":self.store.count("hypothesis_evaluations"),"hypothesis_reasoning":self.store.count("hypothesis_reasoning"),"hypothesis_critics":self.store.count("hypothesis_critics"),"hypothesis_incubations":self.store.count("hypothesis_incubations"),"hypothesis_lifecycle_events":self.store.count("hypothesis_lifecycle_events")}
 
-ROUTES={"/api/stimpy/health":"health","/api/stimpy/status":"status","/api/stimpy/source-status":"source_status","/api/stimpy/observations/recent":"observations","/api/stimpy/memory":"memory_snapshot","/api/stimpy/evidence/recent":"evidence_results","/api/stimpy/reasoning/recent":"reasoning_results","/api/stimpy/critic/recent":"critic_results","/api/stimpy/incubation":"incubations","/api/stimpy/patterns":"patterns","/api/stimpy/hypotheses":"hypotheses","/api/stimpy/hypothesis-incubations":"hypothesis_incubations","/api/stimpy/replay-runs":"replay_runs","/api/stimpy/workflow-results/recent":"workflow_results","/api/stimpy/graph":"knowledge_graph","/api/stimpy/statistics":"statistics"}
+ROUTES={"/api/stimpy/health":"health","/api/stimpy/status":"status","/api/stimpy/source-status":"source_status","/api/stimpy/observations/recent":"observations","/api/stimpy/memory":"memory_snapshot","/api/stimpy/evidence/recent":"evidence_results","/api/stimpy/reasoning/recent":"reasoning_results","/api/stimpy/critic/recent":"critic_results","/api/stimpy/incubation":"incubations","/api/stimpy/patterns":"patterns","/api/stimpy/hypotheses":"hypotheses","/api/stimpy/hypothesis-incubations":"hypothesis_incubations","/api/stimpy/replay-runs":"replay_runs","/api/stimpy/training-runs":"training_runs","/api/stimpy/workflow-results/recent":"workflow_results","/api/stimpy/graph":"knowledge_graph","/api/stimpy/statistics":"statistics"}
 class _Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed=urlparse(self.path); name=ROUTES.get(parsed.path); hypothesis_id=None
@@ -44,6 +46,7 @@ class _Handler(BaseHTTPRequestHandler):
         parts=parsed.path.strip("/").split("/")
         run_id=None
         if name is None and len(parts)==5 and parts[:3]==["api","stimpy","replay-runs"] and parts[4]=="cases": run_id=parts[3]; name="replay_cases"
+        if name is None and len(parts)==5 and parts[:3]==["api","stimpy","training-runs"] and parts[4]=="metrics": run_id=parts[3]; name="training_metrics"
         if name is None and len(parts) in {4,5} and parts[:3]==["api","stimpy","hypotheses"]:
             hypothesis_id=parts[3]
             name="hypothesis" if len(parts)==4 else {"evidence":"hypothesis_evidence","evaluation":"hypothesis_evaluation","reasoning":"hypothesis_reasoning","critic":"hypothesis_critic","lifecycle":"hypothesis_lifecycle"}.get(parts[4])
@@ -63,6 +66,8 @@ class _Handler(BaseHTTPRequestHandler):
         elif name=="hypothesis_incubations": kwargs={"limit":limit,"offset":offset,"status":(query.get("status")or[None])[0]}
         elif name=="replay_runs": kwargs={"limit":limit,"offset":offset}
         elif name=="replay_cases": kwargs={"run_id":run_id,"limit":limit,"offset":offset,"split":(query.get("split")or[None])[0]}
+        elif name=="training_runs": kwargs={"limit":limit,"offset":offset}
+        elif name=="training_metrics": kwargs={"run_id":run_id,"limit":limit,"offset":offset,"hypothesis_key":(query.get("hypothesis_key")or[None])[0],"split":(query.get("split")or[None])[0]}
         try:
             payload=fn(**kwargs)
             if payload is None: return self._send({"error":"not found"},HTTPStatus.NOT_FOUND)

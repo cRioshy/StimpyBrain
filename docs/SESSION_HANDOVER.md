@@ -1,5 +1,15 @@
 # Session handover
 
+## Phase E.1.2 update — 2026-08-08
+
+- Added filtered, idempotent Pandorick ZIP analysis for confidence calibration, errors, volatility, volume and market regime, persisted in SQLite schema v11.
+- The reviewed archive produced 1,402 linked final crypto cases; the 281-case test split had 33.8% wins, 63.3% average confidence and a -29.5 point calibration gap.
+- Limitations: LONG-only outcomes, short date range, LOW-volatility and STRONG_UP concentration; results are descriptive paper simulation, not predictions or evidence promotion.
+- Added GET-only run/metric projections and a latest-run summary in the local Controlcenter.
+- Tests: targeted 5/5 and full suite 84/84 passed; JavaScript syntax, Python compile and diff checks passed.
+- BEFORE backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-08_22-31-48_BEFORE.zip` (916,619 bytes, 555 entries).
+- Branch: `agent/stimpy-pandorick-training-analysis`; exact next safe step is collecting longer, varied and direction-balanced market data before reviewed evidence mapping.
+
 ## Phase E.1.1 update — 2026-08-08
 
 - Added explicit local `OfflineReplayService` for bounded chronological OHLCV CSV files and ten transparent technical rule keys.

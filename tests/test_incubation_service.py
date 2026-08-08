@@ -28,7 +28,7 @@ class IncubationServiceTests(unittest.TestCase):
     def create(self): return self.service.create(self.initial.observation.observation_id,"Should this conclusion survive new evidence?")
     def test_create_is_persistent_idempotent_and_incubating(self):
         first=self.create(); second=self.create(); self.assertEqual(first,second); self.assertEqual(first.status,IncubationStatus.INCUBATING); self.assertEqual(self.store.count("incubation_tasks"),1)
-        self.store.close(); self.store=ObservationStore(self.path,self.root); self.service=IncubationService(self.store,clock=lambda:self.now); self.assertEqual(self.service.get(first.incubation_id),first); self.assertEqual(self.store.schema_version,10)
+        self.store.close(); self.store=ObservationStore(self.path,self.root); self.service=IncubationService(self.store,clock=lambda:self.now); self.assertEqual(self.service.get(first.incubation_id),first); self.assertEqual(self.store.schema_version,11)
     def test_due_transition_is_explicit(self):
         task=self.create(); self.assertEqual(self.service.mark_ready(self.now),0); self.assertEqual(self.service.get(task.incubation_id).status,IncubationStatus.INCUBATING)
         self.assertEqual(self.service.mark_ready(task.reactivate_at),1); self.assertEqual(self.service.get(task.incubation_id).status,IncubationStatus.READY)

@@ -27,3 +27,5 @@
 - `KP-D3-002`: Lifecycle events record a caller-supplied actor label, not an authenticated identity. This is acceptable only while commands remain local and the HTTP API remains GET-only.
 - `KP-D4-001`: The Controlcenter loads at most 100 Hypotheses, Evidence records and incubations per request. Pagination controls are not implemented yet.
 - `KP-D4-002`: The dashboard has no authentication and must remain on loopback. It is an operator view, not a remotely exposed administration interface.
+- The current Pandorick training archive is LONG-only, short-lived and strongly concentrated in LOW volatility and STRONG_UP regimes. Its metrics are descriptive and cannot establish predictive performance or causality.
+- Decision/outcome records may contain repeated updates; E.1.2 deliberately keeps only the final closed outcome per decision.

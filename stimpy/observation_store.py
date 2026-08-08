@@ -138,6 +138,14 @@ CREATE TABLE IF NOT EXISTS replay_cases(case_id TEXT PRIMARY KEY,run_id TEXT NOT
 CREATE INDEX IF NOT EXISTS ix_replay_runs_completed ON replay_runs(completed_at DESC);
 CREATE INDEX IF NOT EXISTS ix_replay_cases_run_split ON replay_cases(run_id,split,hypothesis_key);
 """
+PANDORICK_TRAINING_SCHEMA="""
+CREATE TABLE IF NOT EXISTS pandorick_training_runs(run_id TEXT PRIMARY KEY,dataset_hash TEXT NOT NULL,archive_name TEXT NOT NULL,decision_count INTEGER NOT NULL,closed_outcome_count INTEGER NOT NULL,linked_case_count INTEGER NOT NULL,excluded_count INTEGER NOT NULL,started_at TEXT NOT NULL,completed_at TEXT NOT NULL,status TEXT NOT NULL,configuration TEXT NOT NULL,schema_version INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS pandorick_training_cases(case_id TEXT PRIMARY KEY,run_id TEXT NOT NULL,decision_id TEXT NOT NULL,signal_id TEXT,symbol TEXT NOT NULL,split TEXT NOT NULL,decision_at TEXT NOT NULL,outcome_at TEXT NOT NULL,direction TEXT NOT NULL,confidence REAL NOT NULL,result_type TEXT NOT NULL,return_percent REAL NOT NULL,volatility REAL,volume_ratio REAL,market_regime TEXT NOT NULL,data_quality TEXT NOT NULL,features TEXT NOT NULL,schema_version INTEGER NOT NULL,FOREIGN KEY(run_id) REFERENCES pandorick_training_runs(run_id),UNIQUE(run_id,decision_id));
+CREATE TABLE IF NOT EXISTS pandorick_training_metrics(metric_id TEXT PRIMARY KEY,run_id TEXT NOT NULL,hypothesis_key TEXT NOT NULL,dimension TEXT NOT NULL,bucket TEXT NOT NULL,split TEXT NOT NULL,case_count INTEGER NOT NULL,win_count INTEGER NOT NULL,loss_count INTEGER NOT NULL,breakeven_count INTEGER NOT NULL,win_rate REAL NOT NULL,average_return REAL NOT NULL,average_confidence REAL NOT NULL,calibration_gap REAL,schema_version INTEGER NOT NULL,FOREIGN KEY(run_id) REFERENCES pandorick_training_runs(run_id));
+CREATE INDEX IF NOT EXISTS ix_pandorick_training_runs_completed ON pandorick_training_runs(completed_at DESC);
+CREATE INDEX IF NOT EXISTS ix_pandorick_training_cases_run_split ON pandorick_training_cases(run_id,split,symbol);
+CREATE INDEX IF NOT EXISTS ix_pandorick_training_metrics_run_hypothesis ON pandorick_training_metrics(run_id,hypothesis_key,split);
+"""
 class ObservationStore:
     def __init__(self,database_path,data_dir=None,rotation_bytes=134217728):
         self.path=Path(database_path); self.data_dir=Path(data_dir or self.path.parents[1]); self.observations_dir=self.data_dir/"observations"
@@ -177,6 +185,8 @@ class ObservationStore:
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(9,datetime.now(UTC).isoformat()))
             self._db.executescript(REPLAY_SCHEMA)
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(10,datetime.now(UTC).isoformat()))
+            self._db.executescript(PANDORICK_TRAINING_SCHEMA)
+            self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(11,datetime.now(UTC).isoformat()))
             self._db.execute("PRAGMA optimize")
     @property
     def foreign_keys_enabled(self): return bool(self._db.execute("PRAGMA foreign_keys").fetchone()[0])
@@ -228,7 +238,7 @@ class ObservationStore:
             row["content_hash"],int(row["schema_version"]),row.get("decision"),row.get("confidence"),row.get("outcome"),row.get("profit"))
             for row in self.list(limit)]
     def count(self,table="observations"):
-        if table not in {"observations","memories","workflow_results","knowledge_entries","evidence_results","reasoning_results","critic_results","incubation_tasks","patterns","pattern_cases","hypotheses","hypothesis_evidence","hypothesis_evaluations","hypothesis_reasoning","hypothesis_critics","hypothesis_incubations","hypothesis_lifecycle_events","replay_runs","replay_cases"}: raise ValueError("invalid table")
+        if table not in {"observations","memories","workflow_results","knowledge_entries","evidence_results","reasoning_results","critic_results","incubation_tasks","patterns","pattern_cases","hypotheses","hypothesis_evidence","hypothesis_evaluations","hypothesis_reasoning","hypothesis_critics","hypothesis_incubations","hypothesis_lifecycle_events","replay_runs","replay_cases","pandorick_training_runs","pandorick_training_cases","pandorick_training_metrics"}: raise ValueError("invalid table")
         return int(self._db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
     def upsert_memory(self,m:MemoryRecord):
         with self._lock,self._db:
@@ -446,6 +456,24 @@ class ObservationStore:
         if split is None: rows=self._db.execute("SELECT * FROM replay_cases WHERE run_id=? ORDER BY signal_at,hypothesis_key LIMIT ? OFFSET ?",(run_id,max(1,min(int(limit),100)),max(0,int(offset)))).fetchall()
         else: rows=self._db.execute("SELECT * FROM replay_cases WHERE run_id=? AND split=? ORDER BY signal_at,hypothesis_key LIMIT ? OFFSET ?",(run_id,str(split).upper(),max(1,min(int(limit),100)),max(0,int(offset)))).fetchall()
         return [self._replay_case_dict(row) for row in rows]
+    def save_pandorick_training(self,run,cases,metrics):
+        with self._lock,self._db:
+            self._db.execute("INSERT OR IGNORE INTO pandorick_training_runs VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",(run["run_id"],run["dataset_hash"],run["archive_name"],run["decision_count"],run["closed_outcome_count"],run["linked_case_count"],run["excluded_count"],run["started_at"],run["completed_at"],run["status"],json.dumps(run["configuration"],sort_keys=True),1))
+            self._db.executemany("INSERT OR IGNORE INTO pandorick_training_cases VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",[(c["case_id"],run["run_id"],c["decision_id"],c.get("signal_id"),c["symbol"],c["split"],c["decision_at"],c["outcome_at"],c["direction"],c["confidence"],c["result_type"],c["return_percent"],c.get("volatility"),c.get("volume_ratio"),c["market_regime"],c["data_quality"],json.dumps(c["features"],sort_keys=True),1) for c in cases])
+            self._db.executemany("INSERT OR IGNORE INTO pandorick_training_metrics VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",[(m["metric_id"],run["run_id"],m["hypothesis_key"],m["dimension"],m["bucket"],m["split"],m["case_count"],m["win_count"],m["loss_count"],m["breakeven_count"],m["win_rate"],m["average_return"],m["average_confidence"],m.get("calibration_gap"),1) for m in metrics])
+        return self.get_pandorick_training_run(run["run_id"])
+    def get_pandorick_training_run(self,run_id):
+        row=self._db.execute("SELECT * FROM pandorick_training_runs WHERE run_id=?",(run_id,)).fetchone(); return self._training_run_dict(row) if row else None
+    def list_pandorick_training_runs(self,limit=100,offset=0):
+        rows=self._db.execute("SELECT * FROM pandorick_training_runs ORDER BY completed_at DESC LIMIT ? OFFSET ?",(max(1,min(int(limit),100)),max(0,int(offset)))).fetchall(); return [self._training_run_dict(row) for row in rows]
+    def list_pandorick_training_metrics(self,run_id,limit=100,offset=0,hypothesis_key=None,split=None):
+        clauses=["run_id=?"]; params=[run_id]
+        if hypothesis_key: clauses.append("hypothesis_key=?");params.append(hypothesis_key)
+        if split: clauses.append("split=?");params.append(str(split).upper())
+        params.extend([max(1,min(int(limit),100)),max(0,int(offset))]); rows=self._db.execute(f"SELECT * FROM pandorick_training_metrics WHERE {' AND '.join(clauses)} ORDER BY hypothesis_key,split,bucket LIMIT ? OFFSET ?",params).fetchall(); return [dict(row) for row in rows]
+    @staticmethod
+    def _training_run_dict(row):
+        item=dict(row);item["configuration"]=json.loads(item["configuration"]);return item
     @staticmethod
     def _replay_run_dict(row):
         item=dict(row); item["configuration"]=json.loads(item["configuration"]); return item
