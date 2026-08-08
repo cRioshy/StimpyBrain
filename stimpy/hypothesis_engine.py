@@ -42,6 +42,7 @@ class HypothesisEngine:
     def add_evidence(self,hypothesis_id,source,direction,strength,quality,description,source_observation_ids):
         hypothesis=self.store.get_hypothesis(str(hypothesis_id))
         if hypothesis is None: raise KeyError("unknown hypothesis")
+        if hypothesis.status in {HypothesisStatus.REJECTED,HypothesisStatus.ARCHIVED}: raise ValueError("terminal hypothesis cannot receive evidence")
         source=self._short_text(source,"source",128); description=self._text(description,"description")
         direction=HypothesisEvidenceDirection(direction)
         strength=self._unit_interval(strength,"strength"); quality=self._unit_interval(quality,"quality")
@@ -67,6 +68,7 @@ class HypothesisEngine:
     def evaluate_hypothesis(self,hypothesis_id):
         hypothesis=self.store.get_hypothesis(str(hypothesis_id))
         if hypothesis is None: raise KeyError("unknown hypothesis")
+        if hypothesis.status in {HypothesisStatus.REJECTED,HypothesisStatus.ARCHIVED}: raise ValueError("terminal hypothesis cannot be evaluated")
         evidence=self.store.load_hypothesis_evidence(hypothesis.hypothesis_id)
         supporting=[item for item in evidence if item.direction is HypothesisEvidenceDirection.SUPPORTING]
         contradicting=[item for item in evidence if item.direction is HypothesisEvidenceDirection.CONTRADICTING]

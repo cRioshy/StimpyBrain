@@ -23,3 +23,5 @@
 - `KP-D2-001`: Hypothesis Reasoning and Critic rules are transparent heuristics, not statistical inference or calibrated probability.
 - `KP-D2-002`: Hypothesis incubation is intentionally explicit; no scheduler marks or reactivates tasks automatically.
 - `KP-D2-003`: The Critic can warn about possible look-ahead or leakage but cannot prove a dataset is clean without a separate reviewed offline-data pipeline.
+- `KP-D3-001`: Lifecycle commands are local Python service operations; there is no interactive operator UI or CLI yet.
+- `KP-D3-002`: Lifecycle events record a caller-supplied actor label, not an authenticated identity. This is acceptable only while commands remain local and the HTTP API remains GET-only.

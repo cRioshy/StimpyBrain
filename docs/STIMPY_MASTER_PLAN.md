@@ -11,7 +11,7 @@ The only permitted integration direction is `Pandorick GET API -> Stimpy`. Stimp
 1. **Foundation — completed:** observations, memory, configurable evidence rules, non-causal reasoning, Self Critic, provisional knowledge, stable IDs, SQLite schema v4 and GET-only projections.
 2. **Incubation — completed:** persisted tasks, explicit idempotent reactivation, first/second analysis comparison, bounded failures and restart safety. No automatic worker connection.
 3. **Pattern learning — completed:** explicit independent-case grouping, persisted case links, configurable minimum evidence, contradiction retention, market regimes and bounded GET-only projections. No automatic worker connection.
-4. **Hypotheses — D.2 completed:** local bounded research questions, append-only Observation-linked evidence, independent-case deduplication, conservative evaluation, immutable two-sided Reasoning, Self Critic, explicit incubation and GET-only projections. Inspiration and graph integration remain separate reviewed phases.
+4. **Hypotheses — D.3 completed:** local bounded research questions, append-only Observation-linked evidence, conservative evaluation, immutable Reasoning/Self Critic, explicit incubation and audited reject/archive lifecycle. Inspiration and graph integration remain separate reviewed phases.
 5. **Strategy lab:** historical counterfactual simulation with strict look-ahead protection and separate storage.
 6. **API and graph:** bounded domain projections and insights without raw-observation flooding.
 

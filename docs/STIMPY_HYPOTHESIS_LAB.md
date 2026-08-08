@@ -21,4 +21,4 @@ Three positive cases can therefore never become `SUPPORTED`. Even supported eval
 
 ## Deliberate limits
 
-D.1 provides the foundation. D.2 adds Hypothesis-specific Reasoning, Self Critic and an explicit incubation lifecycle, documented separately. Rejection/archive commands, Inspiration, Mining/Social/On-Chain adapters and Knowledge Graph promotion remain unimplemented. No component writes to Pandorick, creates orders, contacts a broker or sends Telegram messages.
+D.1 provides the foundation. D.2 adds Hypothesis-specific Reasoning, Self Critic and explicit incubation. D.3 adds audited local rejection and archival. Inspiration, Mining/Social/On-Chain adapters and Knowledge Graph promotion remain unimplemented. No component writes to Pandorick, creates orders, contacts a broker or sends Telegram messages.

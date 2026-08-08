@@ -1,19 +1,19 @@
 # Session handover
 
 - Date/time: 2026-08-08 CEST.
-- Goal: implement Phase D.2 Hypothesis-specific Reasoning, Self Critic and explicit evidence-gated incubation without automatic collection or operational integration.
-- Starting point: `agent/stimpy-hypothesis-foundation` at `989e067`; baseline compile succeeded and 65/65 tests passed.
-- Branch: `agent/stimpy-hypothesis-analysis`, based on `agent/stimpy-hypothesis-foundation`.
-- Models added: immutable `HypothesisReasoning`, `HypothesisCritic`, `HypothesisIncubationComparison` and `HypothesisIncubationTask`.
-- Service added: `HypothesisAnalysisService` creates one idempotent two-sided non-causal analysis and Critic per exact Evaluation. Criticism covers small samples, source diversity, missing counterexamples, causal wording, calibration and possible look-ahead/data leakage.
-- Incubation: creation stores the initial Evaluation, Reasoning and Evidence IDs; readiness is explicit; reactivation requires due time plus at least one new independent Evidence ID. Initial and final records and comparison deltas persist across restart.
-- Storage: SQLite schema v8 adds `hypothesis_reasoning`, `hypothesis_critics` and `hypothesis_incubations`, with foreign keys, uniqueness constraints and indexes. Existing records are preserved.
-- API: GET-only latest Reasoning/Critic projections and bounded Hypothesis incubation list were added. State changes remain local Python service calls; HTTP writes return 405.
-- Composition: `build_app()` exposes `hypothesis_analysis`; no worker or scheduler invokes it.
-- Tests: targeted D.2 suite passed 6/6; full suite passed 71/71; `compileall` and `git diff --check` succeeded. Schema 8 has foreign keys enabled and `PRAGMA foreign_key_check` returned zero violations. The first full run had only four expected schema-version assertions (7 instead of 8); they were updated. One diagnostic command initially used the wrong private SQLite attribute and was rerun correctly; it was not a product failure.
-- Safety: no network writes, automatic collection, Pandorick write, broker, order, Telegram, live trading, strategy/model/code mutation, automatic Knowledge promotion or causal claim was added. Polling remains disabled by default.
-- Not implemented: scheduler/worker activation, rejection/archive commands, Inspiration Engine, Mining/Social/On-Chain/Macro adapters, CLI and Knowledge Graph promotion.
-- BEFORE backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-08_12-30-46_BEFORE.zip`; 428,872 bytes and 357 entries; archive open and test extraction passed.
-- Git/PR: branch `agent/stimpy-hypothesis-analysis`; implementation commit `26a5b8f` (`Add Stimpy hypothesis analysis`) pushed to origin. Draft PR #7 targets `agent/stimpy-hypothesis-foundation`: `https://github.com/cRioshy/StimpyBrain/pull/7`. Nothing was merged to `main`.
-- AFTER backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-08_12-41-28_AFTER.zip`; created after the final handover commit and verified by archive open plus test extraction.
-- Exact next safe step: design explicit audited reject/archive commands or offline threshold calibration; keep HTTP GET-only and do not connect operational feedback automatically.
+- Goal: implement Phase D.3 explicit local Hypothesis rejection/archive with immutable audit history and terminal-state protection.
+- Starting point: clean `agent/stimpy-hypothesis-analysis` at `5244451`; baseline compile succeeded and 71/71 tests passed.
+- Branch: `agent/stimpy-hypothesis-lifecycle`, based on `agent/stimpy-hypothesis-analysis`.
+- Models added: `HypothesisLifecycleAction` and immutable validated `HypothesisLifecycleEvent`.
+- Service added: `HypothesisLifecycleService.reject()` and `.archive()` require bounded non-secret reason/actor text. Identical requests are idempotent; conflicting terminal repeats fail closed.
+- Status rules: rejection changes the current state to `REJECTED`; a rejected Hypothesis may subsequently be archived. `ARCHIVED` cannot transition. Both terminal states block new Evidence, evaluation, analysis and incubation reactivation.
+- Storage: SQLite schema v9 adds append-only `hypothesis_lifecycle_events`. Audit insertion and Hypothesis status update occur atomically with an expected-current-status check.
+- API: `GET /api/stimpy/hypotheses/{id}/lifecycle` provides a bounded audit projection. Reject/archive are local service calls only; all HTTP writes still return 405.
+- Composition: `build_app()` exposes `hypothesis_lifecycle`; no worker or scheduler invokes it.
+- Tests: targeted lifecycle suite passed 5/5; full suite passed 76/76; compile and `git diff --check` succeeded. Schema 9 has foreign keys enabled and zero `PRAGMA foreign_key_check` violations. The first full run had only five expected schema-version assertions (8 instead of 9); they were updated and the suite rerun successfully.
+- Safety: no automatic decision, network write, Pandorick write, broker, order, Telegram, live trading, strategy/model/code mutation, automatic Knowledge promotion or causal claim was added. Polling remains disabled by default.
+- Remaining limitation: actor is a caller-supplied local label, not an authenticated identity. Therefore lifecycle writes must remain local and absent from HTTP.
+- BEFORE backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-08_16-20-52_BEFORE.zip`; 685,865 bytes and 444 entries; archive open and test extraction passed.
+- Git/PR: to be filled after publication; nothing will be merged to `main` by this phase.
+- AFTER backup: to be created after publication and verified.
+- Exact next safe step: design an offline threshold-calibration dataset or a local read-only operator view; do not add unauthenticated lifecycle HTTP writes.
