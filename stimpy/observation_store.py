@@ -4,7 +4,7 @@ import json,os,sqlite3
 from datetime import UTC,datetime
 from pathlib import Path
 from threading import RLock
-from .models import CriticResult,EvidenceResult,IncubationComparison,IncubationStatus,IncubationTask,KnowledgeEntry,KnowledgeStatus,MemoryRecord,Observation,Pattern,PatternStatus,ReasoningResult,parse_timestamp
+from .models import CriticResult,EvidenceResult,Hypothesis,HypothesisCreator,HypothesisEvaluation,HypothesisEvidence,HypothesisEvidenceDirection,HypothesisStatus,IncubationComparison,IncubationStatus,IncubationTask,KnowledgeEntry,KnowledgeStatus,MemoryRecord,Observation,Pattern,PatternStatus,ReasoningResult,parse_timestamp
 
 SCHEMA="""
 CREATE TABLE IF NOT EXISTS stimpy_schema_migrations(version INTEGER PRIMARY KEY,applied_at TEXT NOT NULL);
@@ -82,6 +82,27 @@ CREATE TABLE IF NOT EXISTS pattern_cases(
 CREATE INDEX IF NOT EXISTS ix_patterns_status_updated ON patterns(status,updated_at DESC);
 CREATE INDEX IF NOT EXISTS ix_pattern_cases_pattern ON pattern_cases(pattern_id,created_at ASC);
 """
+HYPOTHESIS_SCHEMA="""
+CREATE TABLE IF NOT EXISTS hypotheses(
+ hypothesis_id TEXT PRIMARY KEY,statement TEXT NOT NULL,question TEXT NOT NULL,created_by TEXT NOT NULL,
+ required_data TEXT NOT NULL,status TEXT NOT NULL CHECK(status IN ('NEW','INVESTIGATING','INCUBATING','PROVISIONAL','SUPPORTED','CONTRADICTED','REJECTED','ARCHIVED')),
+ confidence REAL NOT NULL,evidence_count INTEGER NOT NULL,contradiction_count INTEGER NOT NULL,neutral_count INTEGER NOT NULL,
+ created_at TEXT NOT NULL,updated_at TEXT NOT NULL,last_evaluated_at TEXT,schema_version INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS hypothesis_evidence(
+ evidence_id TEXT PRIMARY KEY,hypothesis_id TEXT NOT NULL,source TEXT NOT NULL,source_observation_ids TEXT NOT NULL,
+ direction TEXT NOT NULL CHECK(direction IN ('SUPPORTING','CONTRADICTING','NEUTRAL')),strength REAL NOT NULL,quality REAL NOT NULL,
+ description TEXT NOT NULL,observed_at TEXT NOT NULL,created_at TEXT NOT NULL,independence_key TEXT NOT NULL,schema_version INTEGER NOT NULL,
+ UNIQUE(hypothesis_id,independence_key),FOREIGN KEY(hypothesis_id) REFERENCES hypotheses(hypothesis_id));
+CREATE TABLE IF NOT EXISTS hypothesis_evaluations(
+ evaluation_id TEXT PRIMARY KEY,hypothesis_id TEXT NOT NULL,status TEXT NOT NULL,evidence_ratio REAL NOT NULL,confidence REAL NOT NULL,
+ supporting_count INTEGER NOT NULL,contradicting_count INTEGER NOT NULL,neutral_count INTEGER NOT NULL,
+ weighted_support REAL NOT NULL,weighted_contradiction REAL NOT NULL,evidence_quality REAL NOT NULL,uncertainty REAL NOT NULL,
+ source_count INTEGER NOT NULL,independent_case_count INTEGER NOT NULL,explanation TEXT NOT NULL,evaluated_at TEXT NOT NULL,schema_version INTEGER NOT NULL,
+ FOREIGN KEY(hypothesis_id) REFERENCES hypotheses(hypothesis_id));
+CREATE INDEX IF NOT EXISTS ix_hypotheses_status_created ON hypotheses(status,created_at DESC);
+CREATE INDEX IF NOT EXISTS ix_hypothesis_evidence_hypothesis_time ON hypothesis_evidence(hypothesis_id,observed_at DESC);
+CREATE INDEX IF NOT EXISTS ix_hypothesis_evaluations_hypothesis_time ON hypothesis_evaluations(hypothesis_id,evaluated_at DESC);
+"""
 class ObservationStore:
     def __init__(self,database_path,data_dir=None,rotation_bytes=134217728):
         self.path=Path(database_path); self.data_dir=Path(data_dir or self.path.parents[1]); self.observations_dir=self.data_dir/"observations"
@@ -113,6 +134,8 @@ class ObservationStore:
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(5,datetime.now(UTC).isoformat()))
             self._db.executescript(PATTERN_SCHEMA)
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(6,datetime.now(UTC).isoformat()))
+            self._db.executescript(HYPOTHESIS_SCHEMA)
+            self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(7,datetime.now(UTC).isoformat()))
     @property
     def foreign_keys_enabled(self): return bool(self._db.execute("PRAGMA foreign_keys").fetchone()[0])
     @property
@@ -163,7 +186,7 @@ class ObservationStore:
             row["content_hash"],int(row["schema_version"]),row.get("decision"),row.get("confidence"),row.get("outcome"),row.get("profit"))
             for row in self.list(limit)]
     def count(self,table="observations"):
-        if table not in {"observations","memories","workflow_results","knowledge_entries","evidence_results","reasoning_results","critic_results","incubation_tasks","patterns","pattern_cases"}: raise ValueError("invalid table")
+        if table not in {"observations","memories","workflow_results","knowledge_entries","evidence_results","reasoning_results","critic_results","incubation_tasks","patterns","pattern_cases","hypotheses","hypothesis_evidence","hypothesis_evaluations"}: raise ValueError("invalid table")
         return int(self._db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
     def upsert_memory(self,m:MemoryRecord):
         with self._lock,self._db:
@@ -291,6 +314,58 @@ class ObservationStore:
         return [self._pattern_dict(row) for row in rows]
     def list_pattern_cases(self,pattern_id):
         return [dict(row) for row in self._db.execute("SELECT * FROM pattern_cases WHERE pattern_id=? ORDER BY created_at ASC",(pattern_id,)).fetchall()]
+    def create_hypothesis(self,hypothesis:Hypothesis):
+        with self._lock,self._db:
+            self._db.execute("""INSERT OR IGNORE INTO hypotheses
+            (hypothesis_id,statement,question,created_by,required_data,status,confidence,evidence_count,contradiction_count,neutral_count,created_at,updated_at,last_evaluated_at,schema_version)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",(hypothesis.hypothesis_id,hypothesis.statement,hypothesis.question,hypothesis.created_by.value,json.dumps(hypothesis.required_data),hypothesis.status.value,hypothesis.confidence,hypothesis.evidence_count,hypothesis.contradiction_count,hypothesis.neutral_count,hypothesis.created_at.isoformat(),hypothesis.updated_at.isoformat(),hypothesis.last_evaluated_at.isoformat() if hypothesis.last_evaluated_at else None,hypothesis.schema_version))
+        return self.get_hypothesis(hypothesis.hypothesis_id)
+    def get_hypothesis(self,hypothesis_id):
+        row=self._db.execute("SELECT * FROM hypotheses WHERE hypothesis_id=?",(hypothesis_id,)).fetchone()
+        return self._hypothesis_from_row(row) if row else None
+    def get_hypothesis_dict(self,hypothesis_id):
+        row=self._db.execute("SELECT * FROM hypotheses WHERE hypothesis_id=?",(hypothesis_id,)).fetchone()
+        return self._hypothesis_dict(row) if row else None
+    def list_hypotheses(self,limit=100,offset=0,status=None):
+        limit=max(1,min(int(limit),1000)); offset=max(0,int(offset))
+        if status is None: rows=self._db.execute("SELECT * FROM hypotheses ORDER BY created_at DESC LIMIT ? OFFSET ?",(limit,offset)).fetchall()
+        else: rows=self._db.execute("SELECT * FROM hypotheses WHERE status=? ORDER BY created_at DESC LIMIT ? OFFSET ?",(HypothesisStatus(status).value,limit,offset)).fetchall()
+        return [self._hypothesis_dict(row) for row in rows]
+    def add_hypothesis_evidence(self,evidence:HypothesisEvidence):
+        with self._lock,self._db:
+            self._db.execute("""INSERT OR IGNORE INTO hypothesis_evidence
+            (evidence_id,hypothesis_id,source,source_observation_ids,direction,strength,quality,description,observed_at,created_at,independence_key,schema_version)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",(evidence.evidence_id,evidence.hypothesis_id,evidence.source,json.dumps(evidence.source_observation_ids),evidence.direction.value,evidence.strength,evidence.quality,evidence.description,evidence.observed_at.isoformat(),evidence.created_at.isoformat(),evidence.independence_key,evidence.schema_version))
+        stored=self.get_hypothesis_evidence(evidence.evidence_id)
+        if stored is not None: return stored
+        row=self._db.execute("SELECT * FROM hypothesis_evidence WHERE hypothesis_id=? AND independence_key=?",(evidence.hypothesis_id,evidence.independence_key)).fetchone()
+        return self._hypothesis_evidence_from_row(row)
+    def get_hypothesis_evidence(self,evidence_id):
+        row=self._db.execute("SELECT * FROM hypothesis_evidence WHERE evidence_id=?",(evidence_id,)).fetchone()
+        return self._hypothesis_evidence_from_row(row) if row else None
+    def load_hypothesis_evidence(self,hypothesis_id):
+        rows=self._db.execute("SELECT * FROM hypothesis_evidence WHERE hypothesis_id=? ORDER BY observed_at ASC,evidence_id ASC",(hypothesis_id,)).fetchall()
+        return [self._hypothesis_evidence_from_row(row) for row in rows]
+    def list_hypothesis_evidence(self,hypothesis_id,limit=100,offset=0):
+        rows=self._db.execute("SELECT * FROM hypothesis_evidence WHERE hypothesis_id=? ORDER BY observed_at DESC LIMIT ? OFFSET ?",(hypothesis_id,max(1,min(int(limit),1000)),max(0,int(offset)))).fetchall()
+        return [self._hypothesis_evidence_dict(row) for row in rows]
+    def count_hypothesis_evidence(self,hypothesis_id):
+        return int(self._db.execute("SELECT COUNT(*) FROM hypothesis_evidence WHERE hypothesis_id=?",(hypothesis_id,)).fetchone()[0])
+    def save_hypothesis_evaluation(self,evaluation:HypothesisEvaluation):
+        with self._lock,self._db:
+            self._db.execute("""INSERT OR IGNORE INTO hypothesis_evaluations VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",(evaluation.evaluation_id,evaluation.hypothesis_id,evaluation.status.value,evaluation.evidence_ratio,evaluation.confidence,evaluation.supporting_count,evaluation.contradicting_count,evaluation.neutral_count,evaluation.weighted_support,evaluation.weighted_contradiction,evaluation.evidence_quality,evaluation.uncertainty,evaluation.source_count,evaluation.independent_case_count,evaluation.explanation,evaluation.evaluated_at.isoformat(),evaluation.schema_version))
+        return self.get_hypothesis_evaluation(evaluation.evaluation_id)
+    def get_hypothesis_evaluation(self,evaluation_id):
+        row=self._db.execute("SELECT * FROM hypothesis_evaluations WHERE evaluation_id=?",(evaluation_id,)).fetchone()
+        return self._hypothesis_evaluation_from_row(row) if row else None
+    def latest_hypothesis_evaluation(self,hypothesis_id):
+        row=self._db.execute("SELECT * FROM hypothesis_evaluations WHERE hypothesis_id=? ORDER BY evaluated_at DESC,rowid DESC LIMIT 1",(hypothesis_id,)).fetchone()
+        return self._hypothesis_evaluation_dict(row) if row else None
+    def update_hypothesis_evaluation(self,hypothesis_id,status,confidence,evidence_count,contradiction_count,neutral_count,evaluated_at):
+        with self._lock,self._db:
+            cursor=self._db.execute("""UPDATE hypotheses SET status=?,confidence=?,evidence_count=?,contradiction_count=?,neutral_count=?,updated_at=?,last_evaluated_at=? WHERE hypothesis_id=?""",(status.value,confidence,evidence_count,contradiction_count,neutral_count,evaluated_at.isoformat(),evaluated_at.isoformat(),hypothesis_id))
+            if cursor.rowcount!=1: raise KeyError("unknown hypothesis")
+        return self.get_hypothesis(hypothesis_id)
     @staticmethod
     def _pattern_from_row(row):
         return Pattern(row["pattern_id"],row["pattern_type"],json.loads(row["conditions"]),int(row["observed_cases"]),int(row["positive_cases"]),int(row["negative_cases"]),int(row["unresolved_cases"]),int(row["evidence_count"]),int(row["contradiction_count"]),float(row["confidence"]),PatternStatus(row["status"]),parse_timestamp(row["created_at"]),parse_timestamp(row["updated_at"]),int(row["schema_version"]))
@@ -298,6 +373,24 @@ class ObservationStore:
     def _pattern_dict(cls,row):
         pattern=cls._pattern_from_row(row)
         return {"pattern_id":pattern.pattern_id,"pattern_type":pattern.pattern_type,"conditions":pattern.conditions,"observed_cases":pattern.observed_cases,"positive_cases":pattern.positive_cases,"negative_cases":pattern.negative_cases,"unresolved_cases":pattern.unresolved_cases,"evidence_count":pattern.evidence_count,"contradiction_count":pattern.contradiction_count,"confidence":pattern.confidence,"status":pattern.status.value,"created_at":pattern.created_at.isoformat(),"updated_at":pattern.updated_at.isoformat(),"schema_version":pattern.schema_version}
+    @staticmethod
+    def _hypothesis_from_row(row):
+        return Hypothesis(row["hypothesis_id"],row["statement"],row["question"],HypothesisCreator(row["created_by"]),parse_timestamp(row["created_at"]),parse_timestamp(row["updated_at"]),tuple(json.loads(row["required_data"])),HypothesisStatus(row["status"]),float(row["confidence"]),int(row["evidence_count"]),int(row["contradiction_count"]),int(row["neutral_count"]),parse_timestamp(row["last_evaluated_at"]) if row["last_evaluated_at"] else None,int(row["schema_version"]))
+    @classmethod
+    def _hypothesis_dict(cls,row):
+        item=dict(row); item["required_data"]=list(json.loads(item["required_data"])); return item
+    @staticmethod
+    def _hypothesis_evidence_from_row(row):
+        return HypothesisEvidence(row["evidence_id"],row["hypothesis_id"],row["source"],tuple(json.loads(row["source_observation_ids"])),HypothesisEvidenceDirection(row["direction"]),float(row["strength"]),float(row["quality"]),row["description"],parse_timestamp(row["observed_at"]),parse_timestamp(row["created_at"]),row["independence_key"],int(row["schema_version"]))
+    @classmethod
+    def _hypothesis_evidence_dict(cls,row):
+        item=dict(row); item["source_observation_ids"]=list(json.loads(item["source_observation_ids"])); return item
+    @staticmethod
+    def _hypothesis_evaluation_from_row(row):
+        return HypothesisEvaluation(row["evaluation_id"],row["hypothesis_id"],HypothesisStatus(row["status"]),float(row["evidence_ratio"]),float(row["confidence"]),int(row["supporting_count"]),int(row["contradicting_count"]),int(row["neutral_count"]),float(row["weighted_support"]),float(row["weighted_contradiction"]),float(row["evidence_quality"]),float(row["uncertainty"]),int(row["source_count"]),int(row["independent_case_count"]),row["explanation"],parse_timestamp(row["evaluated_at"]),int(row["schema_version"]))
+    @classmethod
+    def _hypothesis_evaluation_dict(cls,row):
+        evaluation=cls._hypothesis_evaluation_from_row(row); item=dict(row); item["status"]=evaluation.status.value; return item
     @staticmethod
     def _comparison_json(comparison):
         if comparison is None: return None

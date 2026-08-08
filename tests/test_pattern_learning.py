@@ -30,7 +30,7 @@ class PatternLearningTests(unittest.TestCase):
         ids=[self.case(0),self.case(1)]
         first=self.service.learn(ids)[0]; second=self.service.learn(ids)[0]
         self.assertEqual(first.pattern_id,second.pattern_id); self.assertEqual(second.observed_cases,2); self.assertEqual(self.store.count("pattern_cases"),2); self.assertEqual(first.status,PatternStatus.OBSERVED)
-        self.store.close(); self.store=ObservationStore(self.path,self.root); self.assertEqual(self.store.get_pattern(first.pattern_id).observed_cases,2); self.assertEqual(self.store.schema_version,6)
+        self.store.close(); self.store=ObservationStore(self.path,self.root); self.assertEqual(self.store.get_pattern(first.pattern_id).observed_cases,2); self.assertEqual(self.store.schema_version,7)
     def test_pattern_model_rejects_invalid_counts_and_confidence(self):
         pattern=self.service.learn([self.case(0)])[0]
         with self.assertRaises(ValueError): replace(pattern,observed_cases=2)

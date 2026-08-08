@@ -38,6 +38,12 @@ class StimpyConfig:
     pattern_min_cases: int=25
     pattern_supported_min_cases: int=50
     confidence_max_provisional: float=.70
+    hypothesis_min_investigating_cases: int=5
+    hypothesis_min_provisional_cases: int=25
+    hypothesis_min_supported_cases: int=100
+    hypothesis_min_supported_ratio: float=.70
+    hypothesis_max_contradicted_ratio: float=.30
+    hypothesis_max_text_chars: int=2000
     pandorick_endpoints: tuple[str,...]=(
         "/api/v1/health","/api/v1/system/status","/api/v1/brain/status",
         "/api/v1/decisions/recent?limit=100","/api/v1/statistics","/api/v1/warnings")
@@ -52,7 +58,9 @@ class StimpyConfig:
             max(1024,_int("STIMPY_MAX_PAYLOAD_BYTES",65536)),data_dir,db,max(4096,_int("STIMPY_JSONL_ROTATION_BYTES",134217728)),
             max(0,_float("STIMPY_MAX_FUTURE_SKEW_SECONDS",5)),"127.0.0.1",max(1,min(_int("STIMPY_API_PORT",8765),65535)),10.0,
             max(1,_int("STIMPY_INCUBATION_DEFAULT_SECONDS",3600)),max(1,min(_int("STIMPY_INCUBATION_MAX_RETRIES",3),10)),
-            max(2,_int("STIMPY_PATTERN_MIN_CASES",25)),max(2,_int("STIMPY_PATTERN_SUPPORTED_MIN_CASES",50)),max(0.0,min(_float("STIMPY_CONFIDENCE_MAX_PROVISIONAL",.70),.70)))
+            max(2,_int("STIMPY_PATTERN_MIN_CASES",25)),max(2,_int("STIMPY_PATTERN_SUPPORTED_MIN_CASES",50)),max(0.0,min(_float("STIMPY_CONFIDENCE_MAX_PROVISIONAL",.70),.70)),
+            max(2,_int("STIMPY_HYPOTHESIS_MIN_INVESTIGATING_CASES",5)),max(2,_int("STIMPY_HYPOTHESIS_MIN_PROVISIONAL_CASES",25)),max(2,_int("STIMPY_HYPOTHESIS_MIN_SUPPORTED_CASES",100)),
+            max(.50,min(_float("STIMPY_HYPOTHESIS_MIN_SUPPORTED_RATIO",.70),.95)),max(.05,min(_float("STIMPY_HYPOTHESIS_MAX_CONTRADICTED_RATIO",.30),.50)),max(128,min(_int("STIMPY_HYPOTHESIS_MAX_TEXT_CHARS",2000),10000)))
     def validate(self):
         if self.mode!="observe" or not self.read_only: raise ValueError("StimpyBrain is permanently observe/read-only")
         if not self.pandorick_base_url.startswith(("http://127.0.0.1","http://localhost")): raise ValueError("Pandorick URL must be local")
