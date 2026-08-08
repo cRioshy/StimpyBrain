@@ -11,7 +11,7 @@ flowchart LR
     N --> DB[(SQLite index v9)]
     DB --> M[Evidence Memory] --> L[Descriptive Learning] --> G[Knowledge Graph]
     DB --> W["Observe-only Workflow Gate"]
-    DB & M & L & W & G --> API["Local GET-only Stimpy API"]
+    DB & M & L & W & G --> API["Local GET-only Stimpy API"] --> UI["Read-only Hypothesis Controlcenter"]
     WK[Single Worker] --> A
     subgraph RP["Isolated local reasoning prototype"]
       PO["Local payload"] --> O[Observer] --> PM["Memory facade"]
@@ -32,4 +32,4 @@ flowchart LR
 
 There is no edge from Stimpy back to Pandorick. The HTTP client exposes GET only and accepts loopback HTTP base URLs only. Raw observation nodes are not added to the architecture graph.
 
-The prototype is deliberately not connected to the worker, HTTP polling, broker, Telegram or any order path. Evidence, Reasoning and Critic records are immutable-by-ID SQLite projections linked to observations. The Hypothesis Lab stores bounded questions, append-only evidence, idempotent evaluations, Reasoning/Critic records, evidence-gated incubation and append-only lifecycle audit events. Reject/archive commands are explicit local calls and terminal states block later analytical mutation. There is no background scheduler or automatic strategy change.
+The prototype is deliberately not connected to the worker, HTTP polling, broker, Telegram or any order path. The Hypothesis Controlcenter reads bounded same-origin API projections and has no forms or write calls. Its static assets are served with a restrictive Content Security Policy. Reject/archive commands remain explicit local Python calls. There is no background scheduler or automatic strategy change.

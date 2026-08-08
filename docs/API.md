@@ -1,5 +1,7 @@
 # Stimpy read-only API
 
+The local browser view is served at `/controlcenter` with same-origin CSS and JavaScript. It consumes only the GET endpoints, refreshes every 15 seconds and exposes no write control.
+
 Loopback default: `http://127.0.0.1:8765`. All endpoints use GET; all write methods return HTTP 405. `limit` is clamped to 1–100 and `offset` is non-negative.
 
 - `/api/stimpy/health`

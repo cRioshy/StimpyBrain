@@ -16,7 +16,7 @@ The local Stimpy API can be started with:
 python -m stimpy
 ```
 
-Default Stimpy API: `http://127.0.0.1:8765/api/stimpy/health`. Stop with Ctrl+C. Tests:
+Default Stimpy API: `http://127.0.0.1:8765/api/stimpy/health`. The local read-only Hypothesis Controlcenter is available at `http://127.0.0.1:8765/controlcenter`. Stop with Ctrl+C. Tests:
 
 ```powershell
 python -m compileall -q stimpy tests
@@ -25,4 +25,4 @@ python -m unittest discover -v
 
 Activation requires explicit approval after reviewing [the integration contract](docs/PANDORICK_READ_ONLY_INTEGRATION.md). No secrets belong in `.env.example`, Git, logs or API responses.
 
-See [the reasoning prototype documentation](docs/STIMPY_REASONING_PROTOTYPE.md), [Pattern Learning documentation](docs/STIMPY_PATTERN_LEARNING.md), [Hypothesis Lab documentation](docs/STIMPY_HYPOTHESIS_LAB.md), [Hypothesis Analysis documentation](docs/STIMPY_HYPOTHESIS_ANALYSIS.md) and [Lifecycle documentation](docs/STIMPY_HYPOTHESIS_LIFECYCLE.md) for models, rules, persistence and limits.
+See [the reasoning prototype documentation](docs/STIMPY_REASONING_PROTOTYPE.md), [Hypothesis Lab documentation](docs/STIMPY_HYPOTHESIS_LAB.md), [Lifecycle documentation](docs/STIMPY_HYPOTHESIS_LIFECYCLE.md) and [Controlcenter documentation](docs/STIMPY_HYPOTHESIS_CONTROLCENTER.md) for models, rules, persistence and limits.

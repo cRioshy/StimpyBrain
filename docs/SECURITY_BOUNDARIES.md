@@ -17,4 +17,6 @@
 - No scheduler, worker, Inspiration Engine or Knowledge promotion is connected to D.2.
 - Reject/archive commands require bounded non-secret reason and actor text, execute locally and store an immutable audit event atomically with the status change.
 - Terminal Hypotheses fail closed against later Evidence, evaluation, analysis and incubation reactivation. Lifecycle writes are not exposed through HTTP.
+- The Controlcenter is same-origin, dependency-free and GET-only. It uses DOM text nodes for persisted content, ships no write controls and receives restrictive CSP, `nosniff` and `no-store` headers.
+- The dashboard must remain loopback-only because the local API has no authentication.
 - `.env`, databases, observation data, logs, ZIPs, virtual environments and caches are ignored by Git.
