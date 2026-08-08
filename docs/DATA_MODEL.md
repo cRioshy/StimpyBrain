@@ -26,3 +26,11 @@ Phase-D.1 schema v7 adds:
 - `hypothesis_evaluations`: idempotent snapshots for an exact Evidence set and rule configuration, keeping Evidence Ratio separate from Confidence.
 
 Hypothesis statuses are `NEW`, `INVESTIGATING`, `INCUBATING`, `PROVISIONAL`, `SUPPORTED`, `CONTRADICTED`, `REJECTED` and `ARCHIVED`. D.1 automatically emits only `NEW`, `INVESTIGATING`, `PROVISIONAL`, `SUPPORTED` or `CONTRADICTED`; later lifecycle phases own incubation, rejection and archival operations.
+
+Phase-D.2 schema v8 adds:
+
+- `hypothesis_reasoning`: immutable analysis for one exact Hypothesis Evaluation, with both sides, limitations, cautious non-causal conclusion, confidence and uncertainty.
+- `hypothesis_critics`: one immutable review per Hypothesis Reasoning, including issues, suggestions, severity, bias warnings and calibration warning.
+- `hypothesis_incubations`: initial Evaluation, Reasoning and Evidence identities, explicit status/due time, later new Evidence identities, final Evaluation/Reasoning and comparison deltas.
+
+Incubation time alone changes no conclusion or confidence. Reactivation requires a due `READY` task and at least one independent Evidence identity absent from the initial snapshot. Both analyses survive restart.

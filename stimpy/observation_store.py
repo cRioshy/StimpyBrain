@@ -4,7 +4,7 @@ import json,os,sqlite3
 from datetime import UTC,datetime
 from pathlib import Path
 from threading import RLock
-from .models import CriticResult,EvidenceResult,Hypothesis,HypothesisCreator,HypothesisEvaluation,HypothesisEvidence,HypothesisEvidenceDirection,HypothesisStatus,IncubationComparison,IncubationStatus,IncubationTask,KnowledgeEntry,KnowledgeStatus,MemoryRecord,Observation,Pattern,PatternStatus,ReasoningResult,parse_timestamp
+from .models import CriticResult,CriticSeverity,EvidenceResult,Hypothesis,HypothesisCreator,HypothesisCritic,HypothesisEvaluation,HypothesisEvidence,HypothesisEvidenceDirection,HypothesisIncubationComparison,HypothesisIncubationTask,HypothesisReasoning,HypothesisStatus,IncubationComparison,IncubationStatus,IncubationTask,KnowledgeEntry,KnowledgeStatus,MemoryRecord,Observation,Pattern,PatternStatus,ReasoningResult,parse_timestamp
 
 SCHEMA="""
 CREATE TABLE IF NOT EXISTS stimpy_schema_migrations(version INTEGER PRIMARY KEY,applied_at TEXT NOT NULL);
@@ -103,6 +103,28 @@ CREATE INDEX IF NOT EXISTS ix_hypotheses_status_created ON hypotheses(status,cre
 CREATE INDEX IF NOT EXISTS ix_hypothesis_evidence_hypothesis_time ON hypothesis_evidence(hypothesis_id,observed_at DESC);
 CREATE INDEX IF NOT EXISTS ix_hypothesis_evaluations_hypothesis_time ON hypothesis_evaluations(hypothesis_id,evaluated_at DESC);
 """
+HYPOTHESIS_ANALYSIS_SCHEMA="""
+CREATE TABLE IF NOT EXISTS hypothesis_reasoning(
+ reasoning_id TEXT PRIMARY KEY,hypothesis_id TEXT NOT NULL,evaluation_id TEXT NOT NULL UNIQUE,reasons TEXT NOT NULL,counterarguments TEXT NOT NULL,
+ missing_information TEXT NOT NULL,alternative_explanations TEXT NOT NULL,assumptions TEXT NOT NULL,conclusion TEXT NOT NULL,
+ confidence REAL NOT NULL,uncertainty REAL NOT NULL,created_at TEXT NOT NULL,schema_version INTEGER NOT NULL,
+ FOREIGN KEY(hypothesis_id) REFERENCES hypotheses(hypothesis_id),FOREIGN KEY(evaluation_id) REFERENCES hypothesis_evaluations(evaluation_id));
+CREATE TABLE IF NOT EXISTS hypothesis_critics(
+ critic_id TEXT PRIMARY KEY,hypothesis_id TEXT NOT NULL,reasoning_id TEXT NOT NULL UNIQUE,issues TEXT NOT NULL,suggestions TEXT NOT NULL,
+ severity TEXT NOT NULL CHECK(severity IN ('INFO','LOW','MEDIUM','HIGH','CRITICAL')),bias_warnings TEXT NOT NULL,calibration_warning INTEGER NOT NULL,
+ created_at TEXT NOT NULL,schema_version INTEGER NOT NULL,FOREIGN KEY(hypothesis_id) REFERENCES hypotheses(hypothesis_id),FOREIGN KEY(reasoning_id) REFERENCES hypothesis_reasoning(reasoning_id));
+CREATE TABLE IF NOT EXISTS hypothesis_incubations(
+ incubation_id TEXT PRIMARY KEY,hypothesis_id TEXT NOT NULL,question TEXT NOT NULL,initial_evaluation_id TEXT NOT NULL,initial_reasoning_id TEXT NOT NULL,
+ initial_evidence_ids TEXT NOT NULL,status TEXT NOT NULL CHECK(status IN ('NEW','INCUBATING','READY','RESOLVED','FAILED','CANCELLED')),
+ created_at TEXT NOT NULL,reactivate_at TEXT NOT NULL,reactivated_at TEXT,final_evaluation_id TEXT,final_reasoning_id TEXT,new_evidence_ids TEXT NOT NULL,
+ comparison TEXT,conclusion TEXT,failure_count INTEGER NOT NULL,last_error TEXT,schema_version INTEGER NOT NULL,
+ FOREIGN KEY(hypothesis_id) REFERENCES hypotheses(hypothesis_id),FOREIGN KEY(initial_evaluation_id) REFERENCES hypothesis_evaluations(evaluation_id),
+ FOREIGN KEY(initial_reasoning_id) REFERENCES hypothesis_reasoning(reasoning_id),FOREIGN KEY(final_evaluation_id) REFERENCES hypothesis_evaluations(evaluation_id),
+ FOREIGN KEY(final_reasoning_id) REFERENCES hypothesis_reasoning(reasoning_id));
+CREATE INDEX IF NOT EXISTS ix_hypothesis_reasoning_created ON hypothesis_reasoning(created_at DESC);
+CREATE INDEX IF NOT EXISTS ix_hypothesis_critics_created ON hypothesis_critics(created_at DESC);
+CREATE INDEX IF NOT EXISTS ix_hypothesis_incubations_status_time ON hypothesis_incubations(status,reactivate_at);
+"""
 class ObservationStore:
     def __init__(self,database_path,data_dir=None,rotation_bytes=134217728):
         self.path=Path(database_path); self.data_dir=Path(data_dir or self.path.parents[1]); self.observations_dir=self.data_dir/"observations"
@@ -136,6 +158,8 @@ class ObservationStore:
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(6,datetime.now(UTC).isoformat()))
             self._db.executescript(HYPOTHESIS_SCHEMA)
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(7,datetime.now(UTC).isoformat()))
+            self._db.executescript(HYPOTHESIS_ANALYSIS_SCHEMA)
+            self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(8,datetime.now(UTC).isoformat()))
     @property
     def foreign_keys_enabled(self): return bool(self._db.execute("PRAGMA foreign_keys").fetchone()[0])
     @property
@@ -186,7 +210,7 @@ class ObservationStore:
             row["content_hash"],int(row["schema_version"]),row.get("decision"),row.get("confidence"),row.get("outcome"),row.get("profit"))
             for row in self.list(limit)]
     def count(self,table="observations"):
-        if table not in {"observations","memories","workflow_results","knowledge_entries","evidence_results","reasoning_results","critic_results","incubation_tasks","patterns","pattern_cases","hypotheses","hypothesis_evidence","hypothesis_evaluations"}: raise ValueError("invalid table")
+        if table not in {"observations","memories","workflow_results","knowledge_entries","evidence_results","reasoning_results","critic_results","incubation_tasks","patterns","pattern_cases","hypotheses","hypothesis_evidence","hypothesis_evaluations","hypothesis_reasoning","hypothesis_critics","hypothesis_incubations"}: raise ValueError("invalid table")
         return int(self._db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
     def upsert_memory(self,m:MemoryRecord):
         with self._lock,self._db:
@@ -361,11 +385,52 @@ class ObservationStore:
     def latest_hypothesis_evaluation(self,hypothesis_id):
         row=self._db.execute("SELECT * FROM hypothesis_evaluations WHERE hypothesis_id=? ORDER BY evaluated_at DESC,rowid DESC LIMIT 1",(hypothesis_id,)).fetchone()
         return self._hypothesis_evaluation_dict(row) if row else None
+    def latest_hypothesis_evaluation_model(self,hypothesis_id):
+        row=self._db.execute("SELECT * FROM hypothesis_evaluations WHERE hypothesis_id=? ORDER BY evaluated_at DESC,rowid DESC LIMIT 1",(hypothesis_id,)).fetchone()
+        return self._hypothesis_evaluation_from_row(row) if row else None
     def update_hypothesis_evaluation(self,hypothesis_id,status,confidence,evidence_count,contradiction_count,neutral_count,evaluated_at):
         with self._lock,self._db:
             cursor=self._db.execute("""UPDATE hypotheses SET status=?,confidence=?,evidence_count=?,contradiction_count=?,neutral_count=?,updated_at=?,last_evaluated_at=? WHERE hypothesis_id=?""",(status.value,confidence,evidence_count,contradiction_count,neutral_count,evaluated_at.isoformat(),evaluated_at.isoformat(),hypothesis_id))
             if cursor.rowcount!=1: raise KeyError("unknown hypothesis")
         return self.get_hypothesis(hypothesis_id)
+    def set_hypothesis_status(self,hypothesis_id,status,updated_at):
+        with self._lock,self._db:
+            cursor=self._db.execute("UPDATE hypotheses SET status=?,updated_at=? WHERE hypothesis_id=?",(HypothesisStatus(status).value,parse_timestamp(updated_at).isoformat(),hypothesis_id))
+            if cursor.rowcount!=1: raise KeyError("unknown hypothesis")
+        return self.get_hypothesis(hypothesis_id)
+    def save_hypothesis_reasoning(self,result:HypothesisReasoning):
+        with self._lock,self._db: self._db.execute("INSERT OR IGNORE INTO hypothesis_reasoning VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",(result.reasoning_id,result.hypothesis_id,result.evaluation_id,json.dumps(result.reasons),json.dumps(result.counterarguments),json.dumps(result.missing_information),json.dumps(result.alternative_explanations),json.dumps(result.assumptions),result.conclusion,result.confidence,result.uncertainty,result.created_at.isoformat(),result.schema_version))
+        return self.get_hypothesis_reasoning(result.reasoning_id)
+    def get_hypothesis_reasoning(self,reasoning_id):
+        row=self._db.execute("SELECT * FROM hypothesis_reasoning WHERE reasoning_id=?",(reasoning_id,)).fetchone(); return self._hypothesis_reasoning_from_row(row) if row else None
+    def get_hypothesis_reasoning_for_evaluation(self,evaluation_id):
+        row=self._db.execute("SELECT * FROM hypothesis_reasoning WHERE evaluation_id=?",(evaluation_id,)).fetchone(); return self._hypothesis_reasoning_from_row(row) if row else None
+    def latest_hypothesis_reasoning(self,hypothesis_id):
+        row=self._db.execute("SELECT * FROM hypothesis_reasoning WHERE hypothesis_id=? ORDER BY created_at DESC,rowid DESC LIMIT 1",(hypothesis_id,)).fetchone(); return self._hypothesis_reasoning_dict(row) if row else None
+    def save_hypothesis_critic(self,result:HypothesisCritic):
+        with self._lock,self._db: self._db.execute("INSERT OR IGNORE INTO hypothesis_critics VALUES(?,?,?,?,?,?,?,?,?,?)",(result.critic_id,result.hypothesis_id,result.reasoning_id,json.dumps(result.issues),json.dumps(result.suggestions),result.severity.value,json.dumps(result.bias_warnings),int(result.calibration_warning),result.created_at.isoformat(),result.schema_version))
+        return self.get_hypothesis_critic_for_reasoning(result.reasoning_id)
+    def get_hypothesis_critic_for_reasoning(self,reasoning_id):
+        row=self._db.execute("SELECT * FROM hypothesis_critics WHERE reasoning_id=?",(reasoning_id,)).fetchone(); return self._hypothesis_critic_from_row(row) if row else None
+    def latest_hypothesis_critic(self,hypothesis_id):
+        row=self._db.execute("SELECT * FROM hypothesis_critics WHERE hypothesis_id=? ORDER BY created_at DESC,rowid DESC LIMIT 1",(hypothesis_id,)).fetchone(); return self._hypothesis_critic_dict(row) if row else None
+    def create_hypothesis_incubation(self,task:HypothesisIncubationTask):
+        with self._lock,self._db: self._db.execute("INSERT OR IGNORE INTO hypothesis_incubations VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",self._hypothesis_incubation_values(task))
+        return self.get_hypothesis_incubation(task.incubation_id)
+    def update_hypothesis_incubation(self,task:HypothesisIncubationTask):
+        with self._lock,self._db:
+            cursor=self._db.execute("""UPDATE hypothesis_incubations SET status=?,reactivated_at=?,final_evaluation_id=?,final_reasoning_id=?,new_evidence_ids=?,comparison=?,conclusion=?,failure_count=?,last_error=? WHERE incubation_id=?""",(task.status.value,task.reactivated_at.isoformat() if task.reactivated_at else None,task.final_evaluation_id,task.final_reasoning_id,json.dumps(task.new_evidence_ids),json.dumps(task.comparison.__dict__,sort_keys=True) if task.comparison else None,task.conclusion,task.failure_count,task.last_error,task.incubation_id))
+            if cursor.rowcount!=1: raise KeyError("unknown hypothesis incubation")
+        return self.get_hypothesis_incubation(task.incubation_id)
+    def get_hypothesis_incubation(self,incubation_id):
+        row=self._db.execute("SELECT * FROM hypothesis_incubations WHERE incubation_id=?",(incubation_id,)).fetchone(); return self._hypothesis_incubation_from_row(row) if row else None
+    def list_hypothesis_incubations(self,limit=100,offset=0,status=None):
+        limit=max(1,min(int(limit),1000));offset=max(0,int(offset));params=(limit,offset)
+        if status is None: rows=self._db.execute("SELECT * FROM hypothesis_incubations ORDER BY created_at DESC LIMIT ? OFFSET ?",params).fetchall()
+        else: rows=self._db.execute("SELECT * FROM hypothesis_incubations WHERE status=? ORDER BY reactivate_at ASC LIMIT ? OFFSET ?",(IncubationStatus(status).value,limit,offset)).fetchall()
+        return [self._hypothesis_incubation_dict(row) for row in rows]
+    def mark_due_hypothesis_incubations_ready(self,now):
+        with self._lock,self._db: return self._db.execute("UPDATE hypothesis_incubations SET status='READY' WHERE status='INCUBATING' AND reactivate_at<=?",(parse_timestamp(now).isoformat(),)).rowcount
     @staticmethod
     def _pattern_from_row(row):
         return Pattern(row["pattern_id"],row["pattern_type"],json.loads(row["conditions"]),int(row["observed_cases"]),int(row["positive_cases"]),int(row["negative_cases"]),int(row["unresolved_cases"]),int(row["evidence_count"]),int(row["contradiction_count"]),float(row["confidence"]),PatternStatus(row["status"]),parse_timestamp(row["created_at"]),parse_timestamp(row["updated_at"]),int(row["schema_version"]))
@@ -391,6 +456,32 @@ class ObservationStore:
     @classmethod
     def _hypothesis_evaluation_dict(cls,row):
         evaluation=cls._hypothesis_evaluation_from_row(row); item=dict(row); item["status"]=evaluation.status.value; return item
+    @staticmethod
+    def _hypothesis_reasoning_from_row(row):
+        return HypothesisReasoning(row["reasoning_id"],row["hypothesis_id"],row["evaluation_id"],tuple(json.loads(row["reasons"])),tuple(json.loads(row["counterarguments"])),tuple(json.loads(row["missing_information"])),tuple(json.loads(row["alternative_explanations"])),tuple(json.loads(row["assumptions"])),row["conclusion"],float(row["confidence"]),float(row["uncertainty"]),parse_timestamp(row["created_at"]),int(row["schema_version"]))
+    @classmethod
+    def _hypothesis_reasoning_dict(cls,row):
+        item=dict(row)
+        for key in ("reasons","counterarguments","missing_information","alternative_explanations","assumptions"): item[key]=json.loads(item[key])
+        return item
+    @staticmethod
+    def _hypothesis_critic_from_row(row):
+        return HypothesisCritic(row["critic_id"],row["hypothesis_id"],row["reasoning_id"],tuple(json.loads(row["issues"])),tuple(json.loads(row["suggestions"])),CriticSeverity(row["severity"]),tuple(json.loads(row["bias_warnings"])),bool(row["calibration_warning"]),parse_timestamp(row["created_at"]),int(row["schema_version"]))
+    @classmethod
+    def _hypothesis_critic_dict(cls,row):
+        item=dict(row)
+        for key in ("issues","suggestions","bias_warnings"): item[key]=json.loads(item[key])
+        item["calibration_warning"]=bool(item["calibration_warning"]); return item
+    @staticmethod
+    def _hypothesis_incubation_values(task):
+        return (task.incubation_id,task.hypothesis_id,task.question,task.initial_evaluation_id,task.initial_reasoning_id,json.dumps(task.initial_evidence_ids),task.status.value,task.created_at.isoformat(),task.reactivate_at.isoformat(),task.reactivated_at.isoformat() if task.reactivated_at else None,task.final_evaluation_id,task.final_reasoning_id,json.dumps(task.new_evidence_ids),json.dumps(task.comparison.__dict__,sort_keys=True) if task.comparison else None,task.conclusion,task.failure_count,task.last_error,task.schema_version)
+    @staticmethod
+    def _hypothesis_incubation_from_row(row):
+        comparison=HypothesisIncubationComparison(**json.loads(row["comparison"])) if row["comparison"] else None
+        return HypothesisIncubationTask(row["incubation_id"],row["hypothesis_id"],row["question"],row["initial_evaluation_id"],row["initial_reasoning_id"],tuple(json.loads(row["initial_evidence_ids"])),IncubationStatus(row["status"]),parse_timestamp(row["created_at"]),parse_timestamp(row["reactivate_at"]),parse_timestamp(row["reactivated_at"]) if row["reactivated_at"] else None,row["final_evaluation_id"],row["final_reasoning_id"],tuple(json.loads(row["new_evidence_ids"])),comparison,row["conclusion"],int(row["failure_count"]),row["last_error"],int(row["schema_version"]))
+    @classmethod
+    def _hypothesis_incubation_dict(cls,row):
+        item=dict(row); item["initial_evidence_ids"]=json.loads(item["initial_evidence_ids"]); item["new_evidence_ids"]=json.loads(item["new_evidence_ids"]); item["comparison"]=json.loads(item["comparison"]) if item["comparison"] else None; return item
     @staticmethod
     def _comparison_json(comparison):
         if comparison is None: return None
