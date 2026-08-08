@@ -14,6 +14,6 @@
 - Safety: no network writes, automatic collection, Pandorick write, broker, order, Telegram, live trading, strategy/model/code mutation, automatic Knowledge promotion or causal claim was added. Polling remains disabled by default.
 - Not implemented: scheduler/worker activation, rejection/archive commands, Inspiration Engine, Mining/Social/On-Chain/Macro adapters, CLI and Knowledge Graph promotion.
 - BEFORE backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-08_12-30-46_BEFORE.zip`; 428,872 bytes and 357 entries; archive open and test extraction passed.
-- Git/PR: to be filled after publication; nothing will be merged to `main` by this phase.
-- AFTER backup: to be created after publication and verified.
+- Git/PR: branch `agent/stimpy-hypothesis-analysis`; implementation commit `26a5b8f` (`Add Stimpy hypothesis analysis`) pushed to origin. Draft PR #7 targets `agent/stimpy-hypothesis-foundation`: `https://github.com/cRioshy/StimpyBrain/pull/7`. Nothing was merged to `main`.
+- AFTER backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-08_12-41-28_AFTER.zip`; created after the final handover commit and verified by archive open plus test extraction.
 - Exact next safe step: design explicit audited reject/archive commands or offline threshold calibration; keep HTTP GET-only and do not connect operational feedback automatically.
