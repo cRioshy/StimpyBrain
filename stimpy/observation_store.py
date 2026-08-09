@@ -146,6 +146,21 @@ CREATE INDEX IF NOT EXISTS ix_pandorick_training_runs_completed ON pandorick_tra
 CREATE INDEX IF NOT EXISTS ix_pandorick_training_cases_run_split ON pandorick_training_cases(run_id,split,symbol);
 CREATE INDEX IF NOT EXISTS ix_pandorick_training_metrics_run_hypothesis ON pandorick_training_metrics(run_id,hypothesis_key,split);
 """
+SHITZO_FOUNDATION_SCHEMA="""
+CREATE TABLE IF NOT EXISTS shitzo_lab_runs(run_id TEXT PRIMARY KEY,status TEXT NOT NULL CHECK(status IN ('CREATED','RUNNING','STOPPED','FAILED')),configuration TEXT NOT NULL,started_at TEXT,stopped_at TEXT,created_at TEXT NOT NULL,schema_version INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS shitzo_market_events(event_id TEXT PRIMARY KEY,run_id TEXT NOT NULL,symbol TEXT NOT NULL,price REAL NOT NULL,volume REAL,source TEXT NOT NULL,source_timestamp TEXT NOT NULL,received_at TEXT NOT NULL,schema_version INTEGER NOT NULL,FOREIGN KEY(run_id) REFERENCES shitzo_lab_runs(run_id));
+CREATE TABLE IF NOT EXISTS shitzo_feature_snapshots(snapshot_id TEXT PRIMARY KEY,run_id TEXT NOT NULL,symbol TEXT NOT NULL,snapshot_at TEXT NOT NULL,window_started_at TEXT NOT NULL,window_ended_at TEXT NOT NULL,features TEXT NOT NULL,source_data_ids TEXT NOT NULL,schema_version INTEGER NOT NULL,FOREIGN KEY(run_id) REFERENCES shitzo_lab_runs(run_id));
+CREATE TABLE IF NOT EXISTS shitzo_decisions(decision_id TEXT PRIMARY KEY,run_id TEXT NOT NULL,trader_id TEXT NOT NULL,symbol TEXT NOT NULL,direction TEXT NOT NULL CHECK(direction IN ('LONG','SHORT','WAIT')),confidence REAL NOT NULL,reason TEXT NOT NULL,decided_at TEXT NOT NULL,feature_snapshot_id TEXT NOT NULL,strategy_version TEXT NOT NULL,schema_version INTEGER NOT NULL,FOREIGN KEY(run_id) REFERENCES shitzo_lab_runs(run_id),FOREIGN KEY(feature_snapshot_id) REFERENCES shitzo_feature_snapshots(snapshot_id));
+CREATE TABLE IF NOT EXISTS shitzo_accounts(run_id TEXT NOT NULL,trader_id TEXT NOT NULL,starting_balance REAL NOT NULL,balance REAL NOT NULL,realized_pnl REAL NOT NULL,trades INTEGER NOT NULL,wins INTEGER NOT NULL,losses INTEGER NOT NULL,max_drawdown REAL NOT NULL,updated_at TEXT NOT NULL,schema_version INTEGER NOT NULL,PRIMARY KEY(run_id,trader_id),FOREIGN KEY(run_id) REFERENCES shitzo_lab_runs(run_id));
+CREATE TABLE IF NOT EXISTS shitzo_positions(position_id TEXT PRIMARY KEY,run_id TEXT NOT NULL,trader_id TEXT NOT NULL,symbol TEXT NOT NULL,side TEXT NOT NULL CHECK(side IN ('LONG','SHORT')),entry_price REAL NOT NULL,quantity REAL NOT NULL,stop_loss REAL NOT NULL,take_profit REAL NOT NULL,opened_at TEXT NOT NULL,closed_at TEXT,exit_price REAL,pnl_usd REAL,status TEXT NOT NULL CHECK(status IN ('OPEN','CLOSED','CANCELLED')),decision_id TEXT NOT NULL UNIQUE,schema_version INTEGER NOT NULL,FOREIGN KEY(run_id) REFERENCES shitzo_lab_runs(run_id),FOREIGN KEY(decision_id) REFERENCES shitzo_decisions(decision_id));
+CREATE TABLE IF NOT EXISTS shitzo_trades(trade_id TEXT PRIMARY KEY,position_id TEXT NOT NULL UNIQUE,run_id TEXT NOT NULL,result_type TEXT NOT NULL CHECK(result_type IN ('WIN','LOSS','NEUTRAL')),exit_reason TEXT NOT NULL,exit_price REAL NOT NULL,pnl_usd REAL NOT NULL,closed_at TEXT NOT NULL,frozen_context TEXT NOT NULL,schema_version INTEGER NOT NULL,FOREIGN KEY(position_id) REFERENCES shitzo_positions(position_id),FOREIGN KEY(run_id) REFERENCES shitzo_lab_runs(run_id));
+CREATE TABLE IF NOT EXISTS shitzo_daily_stats(stat_id TEXT PRIMARY KEY,run_id TEXT NOT NULL,trader_id TEXT NOT NULL,symbol TEXT NOT NULL,stat_date TEXT NOT NULL,statistics TEXT NOT NULL,schema_version INTEGER NOT NULL,UNIQUE(run_id,trader_id,symbol,stat_date),FOREIGN KEY(run_id) REFERENCES shitzo_lab_runs(run_id));
+CREATE TABLE IF NOT EXISTS shitzo_research_cases(case_id TEXT PRIMARY KEY,trade_id TEXT NOT NULL UNIQUE,observation_id TEXT UNIQUE,created_at TEXT NOT NULL,payload TEXT NOT NULL,schema_version INTEGER NOT NULL,FOREIGN KEY(trade_id) REFERENCES shitzo_trades(trade_id));
+CREATE TABLE IF NOT EXISTS shitzo_hypothesis_suggestions(suggestion_id TEXT PRIMARY KEY,statement TEXT NOT NULL,status TEXT NOT NULL CHECK(status IN ('CANDIDATE','READY_FOR_REVIEW','REJECTED','PROMOTED')),source_case_ids TEXT NOT NULL,case_count INTEGER NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,schema_version INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS ix_shitzo_market_events_run_symbol_time ON shitzo_market_events(run_id,symbol,source_timestamp DESC);
+CREATE INDEX IF NOT EXISTS ix_shitzo_positions_run_status ON shitzo_positions(run_id,status,trader_id,symbol);
+CREATE INDEX IF NOT EXISTS ix_shitzo_trades_run_time ON shitzo_trades(run_id,closed_at DESC);
+"""
 class ObservationStore:
     def __init__(self,database_path,data_dir=None,rotation_bytes=134217728):
         self.path=Path(database_path); self.data_dir=Path(data_dir or self.path.parents[1]); self.observations_dir=self.data_dir/"observations"
@@ -187,6 +202,8 @@ class ObservationStore:
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(10,datetime.now(UTC).isoformat()))
             self._db.executescript(PANDORICK_TRAINING_SCHEMA)
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(11,datetime.now(UTC).isoformat()))
+            self._db.executescript(SHITZO_FOUNDATION_SCHEMA)
+            self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(12,datetime.now(UTC).isoformat()))
             self._db.execute("PRAGMA optimize")
     @property
     def foreign_keys_enabled(self): return bool(self._db.execute("PRAGMA foreign_keys").fetchone()[0])

@@ -20,3 +20,4 @@
 - The Controlcenter is same-origin, dependency-free and GET-only. It uses DOM text nodes for persisted content, ships no write controls and receives restrictive CSP, `nosniff` and `no-store` headers.
 - The dashboard must remain loopback-only because the local API has no authentication.
 - `.env`, databases, observation data, logs, ZIPs, virtual environments and caches are ignored by Git.
+- Shitzo S.1 is disabled by default and has no market provider, network dependency, PaperBroker, trader or worker. Its feed protocol exposes read-only data retrieval only; tests reject order/transfer capabilities and scan the package AST for forbidden execution calls and networking/trading imports.

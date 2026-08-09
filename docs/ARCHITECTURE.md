@@ -32,4 +32,6 @@ flowchart LR
 
 There is no edge from Stimpy back to Pandorick. The HTTP client exposes GET only and accepts loopback HTTP base URLs only. Raw observation nodes are not added to the architecture graph.
 
+Shitzo S.1 is a disconnected foundation inside Stimpy: `MarketDataFeed protocol -> PriceWindow -> frozen FeatureSnapshot`. It has no concrete provider and no edge to a broker, order system, worker, Evidence or HTTP API. Schema v12 only reserves isolated persistence contracts for later reviewed phases.
+
 The prototype is deliberately not connected to the worker, HTTP polling, broker, Telegram or any order path. The Hypothesis Controlcenter reads bounded same-origin API projections and has no forms or write calls. Its static assets are served with a restrictive Content Security Policy. Reject/archive commands remain explicit local Python calls. There is no background scheduler or automatic strategy change.

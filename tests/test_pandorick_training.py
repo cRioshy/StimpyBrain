@@ -20,7 +20,7 @@ class PandorickTrainingTests(unittest.TestCase):
         with zipfile.ZipFile(path,"w") as z:z.writestr("Train/platform_decisions.jsonl","\n".join(decisions));z.writestr("Train/trade_outcomes.jsonl","\n".join(outcomes))
         return path
     def test_analysis_is_filtered_split_persistent_and_idempotent(self):
-        first=self.service.analyse_archive(self.archive());second=self.service.analyse_archive(self.archive());self.assertEqual(first,second);self.assertEqual(first["decision_count"],20);self.assertEqual(first["linked_case_count"],20);self.assertEqual(self.store.count("pandorick_training_runs"),1);self.assertEqual(self.store.count("pandorick_training_cases"),20);self.assertGreater(self.store.count("pandorick_training_metrics"),5);self.assertEqual(self.store.schema_version,11)
+        first=self.service.analyse_archive(self.archive());second=self.service.analyse_archive(self.archive());self.assertEqual(first,second);self.assertEqual(first["decision_count"],20);self.assertEqual(first["linked_case_count"],20);self.assertEqual(self.store.count("pandorick_training_runs"),1);self.assertEqual(self.store.count("pandorick_training_cases"),20);self.assertGreater(self.store.count("pandorick_training_metrics"),5);self.assertEqual(self.store.schema_version,12)
     def test_get_only_metrics_projection(self):
         run=self.service.analyse_archive(self.archive());memory=MemoryService(self.store);server=StimpyApiServer(ReadOnlyAPI(self.store,memory,LearningService(memory),build_graph),port=0);server.start()
         try:

@@ -14,5 +14,6 @@ The only permitted integration direction is `Pandorick GET API -> Stimpy`. Stimp
 4. **Hypotheses — D.4 completed:** local bounded research questions, append-only Evidence, conservative evaluation, immutable Reasoning/Self Critic, explicit incubation, audited lifecycle and a responsive local read-only Controlcenter. Inspiration and graph integration remain separate reviewed phases.
 5. **Strategy lab:** historical counterfactual simulation with strict look-ahead protection and separate storage.
 6. **API and graph:** bounded domain projections and insights without raw-observation flooding.
+7. **Shitzo lab — S.1 completed:** disabled validated paper-research records, capability-minimal read-only feed contract, frozen bounded feature windows and isolated schema v12. PaperBroker, traders, live provider and activation remain later reviewed phases.
 
 Every phase requires targeted and full tests, documentation, BEFORE/AFTER backups and a Draft PR. A phase must not be described as AI or neural learning unless a future reviewed implementation actually provides that behavior.

@@ -29,3 +29,5 @@
 - `KP-D4-002`: The dashboard has no authentication and must remain on loopback. It is an operator view, not a remotely exposed administration interface.
 - The current Pandorick training archive is LONG-only, short-lived and strongly concentrated in LOW volatility and STRONG_UP regimes. Its metrics are descriptive and cannot establish predictive performance or causality.
 - Decision/outcome records may contain repeated updates; E.1.2 deliberately keeps only the final closed outcome per decision.
+- `KP-SH-S1-001`: Shitzo has no selected public market-data provider yet. S.1 deliberately contains only the read-only protocol, so no live data is collected.
+- `KP-SH-S1-002`: Schema v12 is a foundation only; transaction repositories, PaperBroker, traders, orchestration and Evidence bridging require separate reviewed phases.

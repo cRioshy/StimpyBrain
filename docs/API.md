@@ -50,3 +50,5 @@ Hypothesis projections are GET-only:
 Creating hypotheses, adding evidence, evaluating, analysing, incubating, reactivating, rejecting and archiving are local Python service operations. There is no HTTP write endpoint.
 
 Training-run projections are GET-only. Metrics accept bounded pagination plus optional `hypothesis_key` and `split` filters. They expose descriptive persisted aggregates, never trading instructions or automatically promoted evidence.
+
+Shitzo S.1 adds no HTTP endpoint. Its foundation remains disconnected and disabled; later projections must be GET-only and must never expose trade controls.

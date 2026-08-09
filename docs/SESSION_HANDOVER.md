@@ -1,5 +1,17 @@
 # Session handover
 
+## Shitzo Phase S.1 update — 2026-08-09
+
+- Added isolated `stimpy/shitzo` foundation: strict MarketTick/TraderDecision/FeatureSnapshot records, capability-minimal read-only feed protocol and bounded chronological Price Window with stable frozen snapshots.
+- SQLite schema v12 reserves ten logically separated `shitzo_*` tables with foreign keys and query indexes. No Shitzo operational data is written in S.1.
+- `SHITZO_ENABLED=false` by default; only BTC-USD, ETH-USD and XRP-USD are accepted.
+- Deliberately absent: live provider, networking, traders, PaperBroker, worker, API/UI integration, Evidence bridge and automatic Hypothesis promotion.
+- Security tests reject write-capable feeds and scan the package AST for broker/order/transfer calls and networking/trading dependencies.
+- Baseline 84/84; S.1 targeted 5/5; full suite 89/89 passed. Compile and diff checks passed before documentation.
+- Verified BEFORE backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-09_20-20-08_BEFORE.zip` (739,053 bytes, 139 entries; database/source/tests present).
+- Planned verified AFTER backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-09_20-26-36_AFTER.zip`.
+- Branch: `agent/stimpy-shitzo-foundation`. Next safe step: choose a public read-only provider, then implement S.2 virtual broker/repository separately.
+
 ## Phase E.1.2 update — 2026-08-08
 
 - Added filtered, idempotent Pandorick ZIP analysis for confidence calibration, errors, volatility, volume and market regime, persisted in SQLite schema v11.

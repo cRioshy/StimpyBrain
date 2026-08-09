@@ -35,7 +35,7 @@ class HypothesisFoundationTests(unittest.TestCase):
         similar=self.engine.create_hypothesis(first.statement+" Possibly.",first.question,first.required_data); self.assertNotEqual(first.hypothesis_id,similar.hypothesis_id)
         with self.assertRaises(ValueError): self.engine.create_hypothesis("","Question?",["price"])
         with self.assertRaises(ValueError): self.engine.create_hypothesis("token=secret","Question?",["price"])
-        self.store.close(); self.store=ObservationStore(self.path,self.root); self.assertEqual(self.store.get_hypothesis(first.hypothesis_id),first); self.assertEqual(self.store.schema_version,11)
+        self.store.close(); self.store=ObservationStore(self.path,self.root); self.assertEqual(self.store.get_hypothesis(first.hypothesis_id),first); self.assertEqual(self.store.schema_version,12)
     def test_model_rejects_invalid_confidence_counts_and_schema(self):
         hypothesis=self.create()
         with self.assertRaises(ValueError): replace(hypothesis,confidence=math.nan)

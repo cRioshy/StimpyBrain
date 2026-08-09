@@ -24,7 +24,7 @@ class HypothesisLifecycleTests(unittest.TestCase):
     def test_reject_is_atomic_persistent_and_idempotent(self):
         first=self.service.reject(self.hypothesis.hypothesis_id,"Evidence design is invalid.","reviewer"); second=self.service.reject(self.hypothesis.hypothesis_id,"Evidence design is invalid.","reviewer")
         self.assertEqual(first,second); self.assertEqual(first.action,HypothesisLifecycleAction.REJECT); self.assertEqual(first.from_status,HypothesisStatus.NEW); self.assertEqual(self.store.get_hypothesis(self.hypothesis.hypothesis_id).status,HypothesisStatus.REJECTED); self.assertEqual(self.store.count("hypothesis_lifecycle_events"),1)
-        self.store.close(); self.store=ObservationStore(self.path,self.root); self.assertEqual(self.store.get_hypothesis_lifecycle_event(first.event_id),first); self.assertEqual(self.store.schema_version,11)
+        self.store.close(); self.store=ObservationStore(self.path,self.root); self.assertEqual(self.store.get_hypothesis_lifecycle_event(first.event_id),first); self.assertEqual(self.store.schema_version,12)
     def test_archive_preserves_prior_rejection_audit(self):
         rejected=self.service.reject(self.hypothesis.hypothesis_id,"Unsupported research design."); archived=self.service.archive(self.hypothesis.hypothesis_id,"Retain for historical review.")
         self.assertEqual(archived.from_status,HypothesisStatus.REJECTED); self.assertEqual(self.store.get_hypothesis(self.hypothesis.hypothesis_id).status,HypothesisStatus.ARCHIVED); events=self.store.list_hypothesis_lifecycle_events(self.hypothesis.hypothesis_id); self.assertEqual({item["event_id"] for item in events},{rejected.event_id,archived.event_id})
