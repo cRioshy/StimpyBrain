@@ -22,3 +22,4 @@
 - `.env`, databases, observation data, logs, ZIPs, virtual environments and caches are ignored by Git.
 - Shitzo is disabled by default and has no market provider, network dependency, strategy trader or worker. Its feed protocol exposes read-only data retrieval only; tests reject order/transfer capabilities and scan the package AST for forbidden execution calls and networking/trading imports.
 - Shitzo S.2 `PaperBroker` is virtual arithmetic only: it receives frozen records, owns no HTTP/exchange client, caps notional at virtual balance, permits one open position per trader/symbol and writes only `shitzo_*` SQLite state. It remains disconnected from workers and API routes.
+- Shitzo S.3 traders receive only immutable FeatureSnapshots and return deterministic TraderDecisions. They have no repository, PaperBroker, feed, credentials, model mutation or networking capability; Confidence is capped at 0.75.

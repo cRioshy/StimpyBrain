@@ -1,5 +1,16 @@
 # Session handover
 
+## Shitzo Phase S.3 update — 2026-08-09
+
+- Added capability-free deterministic `shitzo-trend`, `shitzo-momentum` and `shitzo-contrarian` traders operating only on immutable FeatureSnapshots.
+- Each strategy returns stable LONG/SHORT/WAIT decisions with transparent numeric reasons, configurable positive thresholds and Confidence capped at 0.75. Missing snapshots fail with `InsufficientDataError`.
+- Added environment threshold defaults: trend 0.001, momentum 0.003 and contrarian 0.005.
+- No provider, network dependency, repository/broker access inside traders, worker, API, UI, Evidence bridge or automatic activation was added. Schema remains v13 and `SHITZO_ENABLED=false`.
+- Targeted Shitzo tests 14/14 and full suite 98/98 passed; compile and diff checks passed.
+- Verified BEFORE backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-09_20-46-24_BEFORE.zip` (789,667 bytes, 156 entries).
+- Planned verified AFTER backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-09_20-51-45_AFTER.zip`.
+- Branch: `agent/stimpy-shitzo-traders`. Next safe step: explicit bounded S.4 orchestration and GET-only projections.
+
 ## Shitzo Phase S.2 update — 2026-08-09
 
 - Added purely virtual `PaperBroker`, validated PaperPosition/TraderAccount/outcome enums and `ShitzoRepository` with atomic virtual close/trade/account updates.
