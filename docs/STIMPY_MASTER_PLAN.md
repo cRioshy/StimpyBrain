@@ -15,5 +15,6 @@ The only permitted integration direction is `Pandorick GET API -> Stimpy`. Stimp
 5. **Strategy lab:** historical counterfactual simulation with strict look-ahead protection and separate storage.
 6. **API and graph:** bounded domain projections and insights without raw-observation flooding.
 7. **Shitzo lab — S.1 completed:** disabled validated paper-research records, capability-minimal read-only feed contract, frozen bounded feature windows and isolated schema v12. PaperBroker, traders, live provider and activation remain later reviewed phases.
+8. **Shitzo lab — S.2 completed:** purely virtual balance-capped PaperBroker and transactional restart-safe repository in schema v13. No feed provider, trader or activation.
 
 Every phase requires targeted and full tests, documentation, BEFORE/AFTER backups and a Draft PR. A phase must not be described as AI or neural learning unless a future reviewed implementation actually provides that behavior.

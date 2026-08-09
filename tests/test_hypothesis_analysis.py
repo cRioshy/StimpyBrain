@@ -29,7 +29,7 @@ class HypothesisAnalysisTests(unittest.TestCase):
     def test_reasoning_and_critic_are_complete_persistent_and_idempotent(self):
         self.add(0);first,critic=self.analysis.analyse(self.hypothesis.hypothesis_id);second,second_critic=self.analysis.analyse(self.hypothesis.hypothesis_id)
         self.assertEqual(first,second);self.assertEqual(critic,second_critic);self.assertTrue(first.reasons);self.assertTrue(first.counterarguments);self.assertTrue(first.missing_information);self.assertTrue(first.alternative_explanations);self.assertIn("non-causal",first.conclusion);self.assertTrue(critic.bias_warnings);self.assertIn("sample size",critic.issues[0]);self.assertEqual(self.store.count("hypothesis_reasoning"),1);self.assertEqual(self.store.count("hypothesis_critics"),1)
-        self.store.close();self.store=ObservationStore(self.path,self.root);self.assertEqual(self.store.get_hypothesis_reasoning(first.reasoning_id),first);self.assertEqual(self.store.schema_version,12)
+        self.store.close();self.store=ObservationStore(self.path,self.root);self.assertEqual(self.store.get_hypothesis_reasoning(first.reasoning_id),first);self.assertEqual(self.store.schema_version,13)
     def test_critic_flags_causal_language_and_missing_counterexamples(self):
         causal=self.engine.create_hypothesis("Hashrate causes BTC to rise.","Does it?",["hashrate","price"]);self.hypothesis=causal;self.add(1);reasoning,critic=self.analysis.analyse(causal.hypothesis_id)
         self.assertEqual(critic.severity.value,"HIGH");self.assertTrue(any("caus" in item for item in critic.issues));self.assertTrue(any("counterexample" in item for item in critic.issues));self.assertNotIn("order",repr(reasoning).lower())

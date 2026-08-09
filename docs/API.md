@@ -51,4 +51,4 @@ Creating hypotheses, adding evidence, evaluating, analysing, incubating, reactiv
 
 Training-run projections are GET-only. Metrics accept bounded pagination plus optional `hypothesis_key` and `split` filters. They expose descriptive persisted aggregates, never trading instructions or automatically promoted evidence.
 
-Shitzo S.1 adds no HTTP endpoint. Its foundation remains disconnected and disabled; later projections must be GET-only and must never expose trade controls.
+Shitzo S.2 adds no HTTP endpoint. Its virtual broker/repository remain disconnected and disabled; later projections must be GET-only and must never expose trade controls.

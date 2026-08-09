@@ -1,12 +1,12 @@
 # Next steps
 
-Completed: GET-only Pandorick client, research foundations through E.1.2, and Shitzo S.1 validated models/read-only feed/frozen-window/schema foundation. Shitzo remains disabled and inactive.
+Completed: research foundations through E.1.2 and Shitzo S.2 virtual PaperBroker plus transactional repository. Shitzo remains disabled and inactive.
 
 Next safe steps:
 
 1. Select and document one public read-only market-data provider before implementing a feed adapter.
-2. Implement S.2 transactional Shitzo repository and purely virtual PaperBroker without any network client.
-3. Obtain varied, longer, direction-balanced data before interpreting E.1.2 regimes.
+2. Implement S.3 deterministic Trend, Momentum and Contrarian traders against frozen snapshots only.
+3. Add explicit fee/slippage parameters before performance comparison, retaining zero defaults for compatibility.
 4. Review E.1.2 metrics before any explicit audited Evidence mapping; never promote automatically.
 3. Design future Inspiration or Knowledge Graph promotion as a separate reviewed phase with no automatic operational feedback.
 4. Review this implementation and explicitly approve activation before setting `STIMPY_PANDORICK_ENABLED=true`.

@@ -1,5 +1,16 @@
 # Session handover
 
+## Shitzo Phase S.2 update — 2026-08-09
+
+- Added purely virtual `PaperBroker`, validated PaperPosition/TraderAccount/outcome enums and `ShitzoRepository` with atomic virtual close/trade/account updates.
+- Supports virtual LONG/SHORT PnL, WAIT and Confidence rejection, balance-capped sizing, Stop-Loss, Take-Profit, manual test close, idempotent closure and one open position per trader/symbol.
+- Schema v13 adds persistent account high-water balance for maximum drawdown; live database migration passed with zero foreign-key errors and zero operational Shitzo rows.
+- No network client, provider, trader, worker, API route, Evidence bridge, real broker, real order or activation was added. `SHITZO_ENABLED=false` remains unchanged.
+- Targeted S.1/S.2 tests 10/10 and full suite 94/94 passed; compile and diff checks passed.
+- Verified BEFORE backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-09_20-37-08_BEFORE.zip` (764,668 bytes, 150 entries).
+- Planned verified AFTER backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-09_20-45-22_AFTER.zip`.
+- Branch: `agent/stimpy-shitzo-paper-broker`. Next safe step: deterministic frozen-snapshot traders in S.3.
+
 ## Shitzo Phase S.1 update — 2026-08-09
 
 - Added isolated `stimpy/shitzo` foundation: strict MarketTick/TraderDecision/FeatureSnapshot records, capability-minimal read-only feed protocol and bounded chronological Price Window with stable frozen snapshots.

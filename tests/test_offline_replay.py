@@ -20,7 +20,7 @@ class OfflineReplayTests(unittest.TestCase):
             writer=csv.writer(f);writer.writerow(["timestamp","open","high","low","close","volume"]);writer.writerows(rows)
         return path
     def test_replay_is_persistent_idempotent_and_split_without_boundary_leakage(self):
-        first=self.service.run_csv(self.csv());second=self.service.run_csv(self.csv());self.assertEqual(first,second);self.assertEqual(self.store.count("replay_runs"),1);self.assertGreater(first["case_count"],0);cases=self.store.list_replay_cases(first["run_id"],1000,0);self.assertTrue({c["split"] for c in cases}.issubset({"TRAIN","VALIDATION","TEST"}));self.assertEqual(self.store.schema_version,12)
+        first=self.service.run_csv(self.csv());second=self.service.run_csv(self.csv());self.assertEqual(first,second);self.assertEqual(self.store.count("replay_runs"),1);self.assertGreater(first["case_count"],0);cases=self.store.list_replay_cases(first["run_id"],1000,0);self.assertTrue({c["split"] for c in cases}.issubset({"TRAIN","VALIDATION","TEST"}));self.assertEqual(self.store.schema_version,13)
     def test_invalid_chronology_fails_closed(self):
         with self.assertRaises(ValueError):self.service.run_csv(self.csv(True))
         self.assertEqual(self.store.count("replay_runs"),0)

@@ -204,6 +204,10 @@ class ObservationStore:
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(11,datetime.now(UTC).isoformat()))
             self._db.executescript(SHITZO_FOUNDATION_SCHEMA)
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(12,datetime.now(UTC).isoformat()))
+            account_columns={r[1] for r in self._db.execute("PRAGMA table_info(shitzo_accounts)")}
+            if "peak_balance" not in account_columns: self._db.execute("ALTER TABLE shitzo_accounts ADD COLUMN peak_balance REAL NOT NULL DEFAULT 0")
+            self._db.execute("UPDATE shitzo_accounts SET peak_balance=MAX(starting_balance,balance) WHERE peak_balance=0")
+            self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(13,datetime.now(UTC).isoformat()))
             self._db.execute("PRAGMA optimize")
     @property
     def foreign_keys_enabled(self): return bool(self._db.execute("PRAGMA foreign_keys").fetchone()[0])

@@ -55,13 +55,13 @@ class ShitzoFoundationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             db = Path(tmp) / "database" / "stimpy.sqlite3"
             store = ObservationStore(db, Path(tmp))
-            self.assertEqual(12, store.schema_version)
+            self.assertEqual(13, store.schema_version)
             tables = {row[0] for row in store._db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'shitzo_%'")}
             self.assertEqual(10, len(tables))
             self.assertEqual([], store._db.execute("PRAGMA foreign_key_check").fetchall())
             store.close()
             reopened = ObservationStore(db, Path(tmp))
-            self.assertEqual(12, reopened.schema_version)
+            self.assertEqual(13, reopened.schema_version)
             reopened.close()
 
     def test_package_has_no_network_or_order_execution_calls(self):

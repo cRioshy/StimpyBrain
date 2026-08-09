@@ -46,6 +46,11 @@ class StimpyConfig:
     hypothesis_max_text_chars: int=2000
     shitzo_enabled: bool=False
     shitzo_symbols: tuple[str,...]=("BTC-USD","ETH-USD","XRP-USD")
+    shitzo_starting_balance_usd: float=10000.0
+    shitzo_risk_per_trade: float=.005
+    shitzo_min_confidence: float=.55
+    shitzo_stop_distance_pct: float=.005
+    shitzo_take_profit_distance_pct: float=.010
     pandorick_endpoints: tuple[str,...]=(
         "/api/v1/health","/api/v1/system/status","/api/v1/brain/status",
         "/api/v1/decisions/recent?limit=100","/api/v1/statistics","/api/v1/warnings")
@@ -63,7 +68,9 @@ class StimpyConfig:
             max(2,_int("STIMPY_PATTERN_MIN_CASES",25)),max(2,_int("STIMPY_PATTERN_SUPPORTED_MIN_CASES",50)),max(0.0,min(_float("STIMPY_CONFIDENCE_MAX_PROVISIONAL",.70),.70)),
             max(2,_int("STIMPY_HYPOTHESIS_MIN_INVESTIGATING_CASES",5)),max(2,_int("STIMPY_HYPOTHESIS_MIN_PROVISIONAL_CASES",25)),max(2,_int("STIMPY_HYPOTHESIS_MIN_SUPPORTED_CASES",100)),
             max(.50,min(_float("STIMPY_HYPOTHESIS_MIN_SUPPORTED_RATIO",.70),.95)),max(.05,min(_float("STIMPY_HYPOTHESIS_MAX_CONTRADICTED_RATIO",.30),.50)),max(128,min(_int("STIMPY_HYPOTHESIS_MAX_TEXT_CHARS",2000),10000)),
-            _bool("SHITZO_ENABLED",False),tuple(item.strip().upper() for item in os.getenv("SHITZO_SYMBOLS","BTC-USD,ETH-USD,XRP-USD").split(",") if item.strip()))
+            _bool("SHITZO_ENABLED",False),tuple(item.strip().upper() for item in os.getenv("SHITZO_SYMBOLS","BTC-USD,ETH-USD,XRP-USD").split(",") if item.strip()),
+            max(1.0,_float("SHITZO_STARTING_BALANCE_USD",10000)),max(.0001,min(_float("SHITZO_RISK_PER_TRADE",.005),.05)),max(.01,min(_float("SHITZO_MIN_CONFIDENCE",.55),1.0)),
+            max(.0001,min(_float("SHITZO_STOP_DISTANCE_PCT",.005),.25)),max(.0001,min(_float("SHITZO_TAKE_PROFIT_DISTANCE_PCT",.010),.50)))
     def validate(self):
         if self.mode!="observe" or not self.read_only: raise ValueError("StimpyBrain is permanently observe/read-only")
         if not self.pandorick_base_url.startswith(("http://127.0.0.1","http://localhost")): raise ValueError("Pandorick URL must be local")

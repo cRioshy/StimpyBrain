@@ -6,7 +6,7 @@ Date: 2026-08-01. StimpyBrain is a standalone Python service. Composition occurs
 
 Verified Pandorick Rick API GET envelopes flow through `ReadOnlyHttpClient -> ObservationAdapter -> ObservationNormalizer -> ObservationStore`. The store appends sanitized raw records to rotating JSONL and maintains a synchronized SQLite index. New records feed evidence-counted Memory, descriptive Learning and the internal observe-only Workflow Gate. The architecture Knowledge Graph and local HTTP API expose bounded projections.
 
-The isolated prototype flows through `Observer -> Memory facade -> EvidenceEngine -> ReasoningEngine -> SelfCritic -> KnowledgeGraph`. It reuses the same JSONL/SQLite store. SQLite schema v12 also reserves isolated `shitzo_*` research tables. Shitzo S.1 contains validated models, a read-only feed protocol and frozen price windows only; no provider, trader, broker, worker or API activation exists.
+The isolated prototype flows through `Observer -> Memory facade -> EvidenceEngine -> ReasoningEngine -> SelfCritic -> KnowledgeGraph`. It reuses the same JSONL/SQLite store. SQLite schema v13 supports the disabled Shitzo S.2 laboratory: validated records, read-only feed protocol, frozen windows, transactional repository and a purely virtual PaperBroker. No provider, trader, worker or API activation exists.
 
 Active only when started: Stimpy worker and local API. Pandorick polling additionally requires `STIMPY_PANDORICK_ENABLED=true`; its default is false. There are no broker, order, Telegram or Pandorick-write components.
 
@@ -20,7 +20,7 @@ Active only when started: Stimpy worker and local API. Pandorick polling additio
 - `stimpy/observation_store.py`: rotating JSONL and SQLite schema v10.
 - `stimpy/offline_replay.py`: explicit chronological OHLCV CSV replay with stable runs and split-safe cases.
 - `stimpy/pandorick_training.py`: explicit, filtered decision/outcome ZIP analysis for five descriptive hypothesis families.
-- `stimpy/shitzo/`: disabled paper-research models, feed boundary and frozen feature-window foundation.
+- `stimpy/shitzo/`: disabled paper-research models, feed boundary, frozen windows, transactional repository and purely virtual PaperBroker.
 - `stimpy/evidence.py`, `reasoning.py`, `self_critic.py`: pure heuristic analysis.
 - `stimpy/incubation_service.py`: explicit persistent task creation, readiness, reactivation, comparison, cancellation and bounded failure handling.
 - `stimpy/pattern_learning.py`: explicit persisted comparable-case grouping, regime separation, contradiction counting and thresholded Pattern status.
@@ -43,7 +43,7 @@ Phase D.1 stores research questions as Hypotheses, never as facts. D.2 adds immu
 
 ## Storage and commands
 
-`stimpy_data/{observations,memory,state,database,logs}` is local and Git-ignored. SQLite foreign keys are enabled and Stimpy schema migration is version 12. Tests: `python -m compileall -q stimpy tests`; `python -m unittest discover -s tests -v`.
+`stimpy_data/{observations,memory,state,database,logs}` is local and Git-ignored. SQLite foreign keys are enabled and Stimpy schema migration is version 13. Tests: `python -m compileall -q stimpy tests`; `python -m unittest discover -s tests -v`.
 
 ## Risks
 
