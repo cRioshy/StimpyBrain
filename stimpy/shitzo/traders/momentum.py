@@ -5,7 +5,7 @@ from ..models import Direction,FeatureSnapshot
 
 class MomentumTrader(SnapshotTrader):
     trader_id="shitzo-momentum"
-    def __init__(self,threshold=.003,max_confidence=.75,strategy_version="momentum-v1"): super().__init__(TraderRules(threshold,max_confidence,strategy_version))
+    def __init__(self,threshold=.0015,max_confidence=.75,strategy_version="momentum-v1-half-threshold"): super().__init__(TraderRules(threshold,max_confidence,strategy_version))
     def _evaluate(self,snapshot:FeatureSnapshot):
         strength=abs(snapshot.momentum)
         if strength<self.rules.threshold: direction=Direction.WAIT

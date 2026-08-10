@@ -51,9 +51,9 @@ class StimpyConfig:
     shitzo_min_confidence: float=.55
     shitzo_stop_distance_pct: float=.005
     shitzo_take_profit_distance_pct: float=.010
-    shitzo_trend_threshold: float=.001
-    shitzo_momentum_threshold: float=.003
-    shitzo_contrarian_threshold: float=.005
+    shitzo_trend_threshold: float=.0005
+    shitzo_momentum_threshold: float=.0015
+    shitzo_contrarian_threshold: float=.0025
     pandorick_endpoints: tuple[str,...]=(
         "/api/v1/health","/api/v1/system/status","/api/v1/brain/status",
         "/api/v1/decisions/recent?limit=100","/api/v1/statistics","/api/v1/warnings")
@@ -74,7 +74,7 @@ class StimpyConfig:
             _bool("SHITZO_ENABLED",False),tuple(item.strip().upper() for item in os.getenv("SHITZO_SYMBOLS","BTC-USD,ETH-USD,XRP-USD").split(",") if item.strip()),
             max(1.0,_float("SHITZO_STARTING_BALANCE_USD",10000)),max(.0001,min(_float("SHITZO_RISK_PER_TRADE",.005),.05)),max(.01,min(_float("SHITZO_MIN_CONFIDENCE",.55),1.0)),
             max(.0001,min(_float("SHITZO_STOP_DISTANCE_PCT",.005),.25)),max(.0001,min(_float("SHITZO_TAKE_PROFIT_DISTANCE_PCT",.010),.50)),
-            max(.00001,min(_float("SHITZO_TREND_THRESHOLD",.001),.25)),max(.00001,min(_float("SHITZO_MOMENTUM_THRESHOLD",.003),.25)),max(.00001,min(_float("SHITZO_CONTRARIAN_THRESHOLD",.005),.25)))
+            max(.00001,min(_float("SHITZO_TREND_THRESHOLD",.0005),.25)),max(.00001,min(_float("SHITZO_MOMENTUM_THRESHOLD",.0015),.25)),max(.00001,min(_float("SHITZO_CONTRARIAN_THRESHOLD",.0025),.25)))
     def validate(self):
         if self.mode!="observe" or not self.read_only: raise ValueError("StimpyBrain is permanently observe/read-only")
         if not self.pandorick_base_url.startswith(("http://127.0.0.1","http://localhost")): raise ValueError("Pandorick URL must be local")

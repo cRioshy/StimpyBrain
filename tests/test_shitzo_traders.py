@@ -35,6 +35,10 @@ class ShitzoTraderTests(unittest.TestCase):
         decision=MomentumTrader(threshold=.0001,max_confidence=.60).decide(self.snapshot("cap",momentum=.5))
         self.assertEqual(.60,decision.confidence)
         with self.assertRaises(ValueError): TrendTrader(threshold=0)
+    def test_default_thresholds_are_the_approved_half_values(self):
+        self.assertEqual(.0005,TrendTrader().rules.threshold)
+        self.assertEqual(.0015,MomentumTrader().rules.threshold)
+        self.assertEqual(.0025,ContrarianTrader().rules.threshold)
 
 
 if __name__=="__main__": unittest.main()

@@ -5,7 +5,7 @@ from ..models import Direction,FeatureSnapshot
 
 class TrendTrader(SnapshotTrader):
     trader_id="shitzo-trend"
-    def __init__(self,threshold=.001,max_confidence=.75,strategy_version="trend-v1"): super().__init__(TraderRules(threshold,max_confidence,strategy_version))
+    def __init__(self,threshold=.0005,max_confidence=.75,strategy_version="trend-v1-half-threshold"): super().__init__(TraderRules(threshold,max_confidence,strategy_version))
     def _evaluate(self,snapshot:FeatureSnapshot):
         spread=(snapshot.short_ma-snapshot.long_ma)/snapshot.long_ma; strength=abs(spread)
         if strength<self.rules.threshold: direction=Direction.WAIT

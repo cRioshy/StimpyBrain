@@ -1,5 +1,12 @@
 # Session handover
 
+## Shitzo half-threshold experiment — 2026-08-10
+
+- After a completed one-hour live-paper run produced 5,643 WAIT decisions and zero trades, the operator explicitly approved half strategy entry thresholds.
+- New defaults: Trend 0.0005, Momentum 0.0015, Contrarian 0.0025. Strategy versions now carry `half-threshold` for auditable outcome separation.
+- Risk, minimum Confidence, virtual Stop-Loss/Take-Profit, no-leverage cap and all no-real-order boundaries remain unchanged. More false entries and virtual losses are expected and accepted as research data.
+- Verified BEFORE backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-10_20-37-58_BEFORE_HALF_THRESHOLDS.zip`.
+
 ## Controlled Shitzo fixture run — 2026-08-10
 
 - Explicit local run `controlled-fixture-20260810-1910` used generated BTC-USD, ETH-USD and XRP-USD ticks only; no internet/provider was used. Risk was temporarily 0.001 inside the script.

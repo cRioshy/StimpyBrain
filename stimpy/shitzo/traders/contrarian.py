@@ -5,7 +5,7 @@ from ..models import Direction,FeatureSnapshot
 
 class ContrarianTrader(SnapshotTrader):
     trader_id="shitzo-contrarian"
-    def __init__(self,threshold=.005,max_confidence=.75,strategy_version="contrarian-v1"): super().__init__(TraderRules(threshold,max_confidence,strategy_version))
+    def __init__(self,threshold=.0025,max_confidence=.75,strategy_version="contrarian-v1-half-threshold"): super().__init__(TraderRules(threshold,max_confidence,strategy_version))
     def _evaluate(self,snapshot:FeatureSnapshot):
         deviation=(snapshot.price-snapshot.long_ma)/snapshot.long_ma; strength=abs(deviation)
         if strength<self.rules.threshold: direction=Direction.WAIT

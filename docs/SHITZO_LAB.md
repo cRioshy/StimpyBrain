@@ -8,6 +8,8 @@ The PaperBroker handles LONG/SHORT virtual PnL, WAIT and Confidence gates, balan
 
 `shitzo-trend` compares short and long moving averages. `shitzo-momentum` evaluates frozen window momentum. `shitzo-contrarian` compares price with the long mean and deliberately takes the opposite direction beyond its threshold. Each emits LONG, SHORT or WAIT with a transparent reason, stable identity and Confidence capped at 0.75. These are experiments, not profitable-strategy claims.
 
+After the reviewed one-hour all-WAIT run, the operator explicitly approved half entry thresholds: Trend 0.0005 (0.05%), Momentum 0.0015 (0.15%) and Contrarian 0.0025 (0.25%). Strategy versions include `half-threshold` so later outcomes remain distinguishable from the original rules. Risk, minimum Confidence, Stop-Loss and Take-Profit are unchanged.
+
 `ShitzoLab` must be explicitly enabled and started locally. It creates virtual accounts, accepts validated ticks one at a time, updates open positions, freezes complete windows, asks each trader for a decision and passes eligible decisions to the virtual PaperBroker. It owns no thread, scheduler or network client. Stopping records the run state but preserves open positions.
 
 GET-only status, trader, account, position, decision and trade projections are displayed as a compact read-only Controlcenter summary. There are no buttons or HTTP writes. No live provider, Evidence Bridge, Hypothesis Suggestion service or Stimpy-worker activation exists.
