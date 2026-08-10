@@ -86,10 +86,15 @@ class ShitzoRepository:
         return self._query("shitzo_positions","opened_at",clauses,params,limit,offset)
     def list_decisions(self,limit=100,offset=0,run_id=None): return self._list("shitzo_decisions","decided_at",limit,offset,run_id)
     def list_trades(self,limit=100,offset=0,run_id=None): return self._list("shitzo_trades","closed_at",limit,offset,run_id)
-    def count(self,table,run_id=None):
+    def count(self,table,run_id=None,status=None):
         allowed={"shitzo_accounts","shitzo_positions","shitzo_decisions","shitzo_trades","shitzo_lab_runs"}
         if table not in allowed: raise ValueError("unsupported Shitzo table")
-        return int(self._db.execute(f"SELECT COUNT(*) FROM {table}"+(" WHERE run_id=?" if run_id else ""),(run_id,) if run_id else ()).fetchone()[0])
+        clauses=[];params=[]
+        if run_id: clauses.append("run_id=?");params.append(run_id)
+        if status:
+            if table!="shitzo_positions": raise ValueError("status filter is supported only for positions")
+            clauses.append("status=?");params.append(status)
+        return int(self._db.execute(f"SELECT COUNT(*) FROM {table}"+(" WHERE "+" AND ".join(clauses) if clauses else ""),params).fetchone()[0])
     def _list(self,table,order,limit,offset,run_id): return self._query(table,order,["run_id=?"] if run_id else [],[run_id] if run_id else [],limit,offset)
     def _query(self,table,order,clauses,params,limit,offset):
         sql=f"SELECT * FROM {table}"+(" WHERE "+" AND ".join(clauses) if clauses else "")+f" ORDER BY {order} DESC LIMIT ? OFFSET ?"

@@ -41,7 +41,7 @@ class ReadOnlyAPI:
         if not self.shitzo_repository: return {"items":[],"limit":limit,"offset":offset,"total":0}
         fn=getattr(self.shitzo_repository,f"list_{kind}");kwargs={"limit":limit,"offset":offset,"run_id":run_id}
         if kind=="positions": kwargs["status"]=status
-        return {"items":fn(**kwargs),"limit":limit,"offset":offset,"total":self.shitzo_repository.count(f"shitzo_{kind}",run_id)}
+        return {"items":fn(**kwargs),"limit":limit,"offset":offset,"total":self.shitzo_repository.count(f"shitzo_{kind}",run_id,status if kind=="positions" else None)}
     def shitzo_accounts(self,limit=100,offset=0,run_id=None): return self._shitzo_list("accounts",limit,offset,run_id)
     def shitzo_positions(self,limit=100,offset=0,run_id=None,status=None): return self._shitzo_list("positions",limit,offset,run_id,status)
     def shitzo_decisions(self,limit=100,offset=0,run_id=None): return self._shitzo_list("decisions",limit,offset,run_id)

@@ -1,5 +1,14 @@
 # Session handover
 
+## Controlled Shitzo fixture run — 2026-08-10
+
+- Explicit local run `controlled-fixture-20260810-1910` used generated BTC-USD, ETH-USD and XRP-USD ticks only; no internet/provider was used. Risk was temporarily 0.001 inside the script.
+- Result: STOPPED, 3 virtual accounts, 18 decisions, 18 closed virtual trades, 6 WIN / 3 LOSS / 9 NEUTRAL, total realized PnL +76.545633 USD and zero open positions. Nine remaining positions were explicitly `MANUAL_TEST_CLOSE`.
+- Foreign-key check passed. Shitzo returned to `enabled=false`, `active=false`, `automatic=false`, `live_provider=false`, `real_orders=false`.
+- The run exposed and fixed a GET projection counter bug: filtered OPEN position totals now match filtered items (0/0). Targeted S.4 tests 4/4 passed.
+- Verified pre-run backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-10_19-06-30_BEFORE_CONTROLLED_RUN.zip`.
+- Planned post-run backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-10_19-08-04_AFTER_CONTROLLED_RUN.zip`.
+
 ## Shitzo Phase S.4 update — 2026-08-10
 
 - Added explicit `ShitzoLab` orchestration: local start, one validated tick at a time, position update, frozen window, three decisions, virtual broker and persistence. No thread, timer or provider exists.

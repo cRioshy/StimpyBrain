@@ -46,6 +46,7 @@ class ShitzoLabApiTests(unittest.TestCase):
         memory=MemoryService(self.store);api=ReadOnlyAPI(self.store,memory,LearningService(memory),build_graph,None,self.lab,self.repo);self.server=StimpyApiServer(api,port=0);self.server.start()
         for endpoint in ("status","traders","accounts","positions","decisions","trades"):
             response=urllib.request.urlopen(f"{self.server.url}/api/stimpy/shitzo/{endpoint}?run_id={run}&limit=10",timeout=2);self.assertEqual(200,response.status);payload=json.load(response);self.assertIsInstance(payload,dict)
+        open_payload=json.load(urllib.request.urlopen(f"{self.server.url}/api/stimpy/shitzo/positions?run_id={run}&status=OPEN",timeout=2));self.assertEqual(len(open_payload["items"]),open_payload["total"])
         request=urllib.request.Request(self.server.url+"/api/stimpy/shitzo/status",data=b"{}",method="POST")
         with self.assertRaises(urllib.error.HTTPError) as caught: urllib.request.urlopen(request,timeout=2)
         self.assertEqual(405,caught.exception.code)
