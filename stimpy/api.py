@@ -11,7 +11,7 @@ _STATIC_DIR=Path(__file__).with_name("static")
 CONTROL_ASSETS={"/controlcenter":("controlcenter.html","text/html; charset=utf-8"),"/controlcenter/":("controlcenter.html","text/html; charset=utf-8"),"/controlcenter/app.css":("controlcenter.css","text/css; charset=utf-8"),"/controlcenter/app.js":("controlcenter.js","text/javascript; charset=utf-8")}
 
 class ReadOnlyAPI:
-    def __init__(self,store,memory,learning,graph,worker=None): self.store,self.memory,self.learning,self.graph,self.worker=store,memory,learning,graph,worker
+    def __init__(self,store,memory,learning,graph,worker=None,shitzo_lab=None,shitzo_repository=None): self.store,self.memory,self.learning,self.graph,self.worker,self.shitzo_lab,self.shitzo_repository=store,memory,learning,graph,worker,shitzo_lab,shitzo_repository
     def health(self): return {"status":self.worker.status if self.worker else "STOPPED","database":"OK","read_only":True}
     def status(self): return self.worker.status_snapshot() if self.worker else {"status":"STOPPED","mode":"observe","read_only":True}
     def source_status(self): return self.worker.adapter.source_status() if self.worker else {"enabled":False,"available":None}
@@ -35,10 +35,21 @@ class ReadOnlyAPI:
     def replay_cases(self,run_id,limit=100,offset=0,split=None): return {"items":self.store.list_replay_cases(run_id,limit,offset,split),"limit":limit,"offset":offset} if self.store.get_replay_run(run_id) else None
     def training_runs(self,limit=100,offset=0): return {"items":self.store.list_pandorick_training_runs(limit,offset),"limit":limit,"offset":offset,"total":self.store.count("pandorick_training_runs")}
     def training_metrics(self,run_id,limit=100,offset=0,hypothesis_key=None,split=None): return {"items":self.store.list_pandorick_training_metrics(run_id,limit,offset,hypothesis_key,split),"limit":limit,"offset":offset} if self.store.get_pandorick_training_run(run_id) else None
+    def shitzo_status(self): return self.shitzo_lab.status() if self.shitzo_lab else {"enabled":False,"active":False,"automatic":False,"live_provider":False,"real_orders":False,"run":None}
+    def shitzo_traders(self): return {"items":[{"trader_id":t.trader_id,"strategy_version":t.rules.strategy_version,"threshold":t.rules.threshold,"max_confidence":t.rules.max_confidence} for t in self.shitzo_lab.traders],"active":self.shitzo_lab.active} if self.shitzo_lab else {"items":[],"active":False}
+    def _shitzo_list(self,kind,limit,offset,run_id=None,status=None):
+        if not self.shitzo_repository: return {"items":[],"limit":limit,"offset":offset,"total":0}
+        fn=getattr(self.shitzo_repository,f"list_{kind}");kwargs={"limit":limit,"offset":offset,"run_id":run_id}
+        if kind=="positions": kwargs["status"]=status
+        return {"items":fn(**kwargs),"limit":limit,"offset":offset,"total":self.shitzo_repository.count(f"shitzo_{kind}",run_id)}
+    def shitzo_accounts(self,limit=100,offset=0,run_id=None): return self._shitzo_list("accounts",limit,offset,run_id)
+    def shitzo_positions(self,limit=100,offset=0,run_id=None,status=None): return self._shitzo_list("positions",limit,offset,run_id,status)
+    def shitzo_decisions(self,limit=100,offset=0,run_id=None): return self._shitzo_list("decisions",limit,offset,run_id)
+    def shitzo_trades(self,limit=100,offset=0,run_id=None): return self._shitzo_list("trades",limit,offset,run_id)
     def knowledge_graph(self): return self.graph()
     def statistics(self): return {"observations":self.store.count(),"memories":self.store.count("memories"),"workflow_results":self.store.count("workflow_results"),"evidence_results":self.store.count("evidence_results"),"reasoning_results":self.store.count("reasoning_results"),"critic_results":self.store.count("critic_results"),"incubation_tasks":self.store.count("incubation_tasks"),"patterns":self.store.count("patterns"),"pattern_cases":self.store.count("pattern_cases"),"hypotheses":self.store.count("hypotheses"),"hypothesis_evidence":self.store.count("hypothesis_evidence"),"hypothesis_evaluations":self.store.count("hypothesis_evaluations"),"hypothesis_reasoning":self.store.count("hypothesis_reasoning"),"hypothesis_critics":self.store.count("hypothesis_critics"),"hypothesis_incubations":self.store.count("hypothesis_incubations"),"hypothesis_lifecycle_events":self.store.count("hypothesis_lifecycle_events")}
 
-ROUTES={"/api/stimpy/health":"health","/api/stimpy/status":"status","/api/stimpy/source-status":"source_status","/api/stimpy/observations/recent":"observations","/api/stimpy/memory":"memory_snapshot","/api/stimpy/evidence/recent":"evidence_results","/api/stimpy/reasoning/recent":"reasoning_results","/api/stimpy/critic/recent":"critic_results","/api/stimpy/incubation":"incubations","/api/stimpy/patterns":"patterns","/api/stimpy/hypotheses":"hypotheses","/api/stimpy/hypothesis-incubations":"hypothesis_incubations","/api/stimpy/replay-runs":"replay_runs","/api/stimpy/training-runs":"training_runs","/api/stimpy/workflow-results/recent":"workflow_results","/api/stimpy/graph":"knowledge_graph","/api/stimpy/statistics":"statistics"}
+ROUTES={"/api/stimpy/health":"health","/api/stimpy/status":"status","/api/stimpy/source-status":"source_status","/api/stimpy/observations/recent":"observations","/api/stimpy/memory":"memory_snapshot","/api/stimpy/evidence/recent":"evidence_results","/api/stimpy/reasoning/recent":"reasoning_results","/api/stimpy/critic/recent":"critic_results","/api/stimpy/incubation":"incubations","/api/stimpy/patterns":"patterns","/api/stimpy/hypotheses":"hypotheses","/api/stimpy/hypothesis-incubations":"hypothesis_incubations","/api/stimpy/replay-runs":"replay_runs","/api/stimpy/training-runs":"training_runs","/api/stimpy/shitzo/status":"shitzo_status","/api/stimpy/shitzo/traders":"shitzo_traders","/api/stimpy/shitzo/accounts":"shitzo_accounts","/api/stimpy/shitzo/positions":"shitzo_positions","/api/stimpy/shitzo/decisions":"shitzo_decisions","/api/stimpy/shitzo/trades":"shitzo_trades","/api/stimpy/workflow-results/recent":"workflow_results","/api/stimpy/graph":"knowledge_graph","/api/stimpy/statistics":"statistics"}
 class _Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed=urlparse(self.path); name=ROUTES.get(parsed.path); hypothesis_id=None
@@ -68,6 +79,8 @@ class _Handler(BaseHTTPRequestHandler):
         elif name=="replay_cases": kwargs={"run_id":run_id,"limit":limit,"offset":offset,"split":(query.get("split")or[None])[0]}
         elif name=="training_runs": kwargs={"limit":limit,"offset":offset}
         elif name=="training_metrics": kwargs={"run_id":run_id,"limit":limit,"offset":offset,"hypothesis_key":(query.get("hypothesis_key")or[None])[0],"split":(query.get("split")or[None])[0]}
+        elif name in {"shitzo_accounts","shitzo_decisions","shitzo_trades"}: kwargs={"limit":limit,"offset":offset,"run_id":(query.get("run_id")or[None])[0]}
+        elif name=="shitzo_positions": kwargs={"limit":limit,"offset":offset,"run_id":(query.get("run_id")or[None])[0],"status":(query.get("status")or[None])[0]}
         try:
             payload=fn(**kwargs)
             if payload is None: return self._send({"error":"not found"},HTTPStatus.NOT_FOUND)

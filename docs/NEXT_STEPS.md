@@ -1,11 +1,12 @@
 # Next steps
 
-Completed: research foundations through E.1.2 and Shitzo S.3 deterministic Trend, Momentum and Contrarian traders. Shitzo remains disabled and inactive.
+Completed: research foundations through E.1.2 and Shitzo S.4 explicit bounded orchestration, GET API and read-only Controlcenter summary. Shitzo remains disabled and inactive.
 
 Next safe steps:
 
 1. Select and document one public read-only market-data provider before implementing a feed adapter.
-2. Implement S.4 bounded explicit ShitzoLab orchestration and GET-only projections without automatic activation.
+2. Run a short controlled fixture/replay session before selecting a real public provider; inspect persistence and restart behavior.
+3. Design S.5 Evidence Bridge as a deduplicated reviewed research-case boundary, never direct promotion.
 3. Add explicit fee/slippage parameters before performance comparison, retaining zero defaults for compatibility.
 4. Review E.1.2 metrics before any explicit audited Evidence mapping; never promote automatically.
 3. Design future Inspiration or Knowledge Graph promotion as a separate reviewed phase with no automatic operational feedback.

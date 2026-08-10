@@ -4,7 +4,7 @@ import json, sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import RLock
-from .models import FeatureSnapshot, PaperPosition, PositionStatus, TraderAccount, TraderDecision
+from .models import FeatureSnapshot, MarketTick, PaperPosition, PositionStatus, TraderAccount, TraderDecision
 
 
 class ShitzoRepository:
@@ -19,6 +19,20 @@ class ShitzoRepository:
         now=datetime.now(UTC).isoformat()
         with self._lock,self._db: self._db.execute("INSERT OR IGNORE INTO shitzo_lab_runs VALUES(?,?,?,?,?,?,?)",(run_id,"CREATED",json.dumps(configuration,sort_keys=True),None,None,now,1))
         return run_id
+    def start_run(self,run_id,started_at):
+        with self._lock,self._db:
+            changed=self._db.execute("UPDATE shitzo_lab_runs SET status='RUNNING',started_at=? WHERE run_id=? AND status='CREATED'",(started_at.isoformat(),run_id)).rowcount
+        if not changed and self.get_run(run_id)["status"]!="RUNNING": raise RuntimeError("run cannot be started")
+    def stop_run(self,run_id,stopped_at):
+        with self._lock,self._db:
+            self._db.execute("UPDATE shitzo_lab_runs SET status='STOPPED',stopped_at=? WHERE run_id=? AND status='RUNNING'",(stopped_at.isoformat(),run_id))
+    def save_tick(self,run_id,tick:MarketTick,received_at):
+        with self._lock,self._db:
+            self._db.execute("INSERT OR IGNORE INTO shitzo_market_events VALUES(?,?,?,?,?,?,?,?,?)",(tick.source_event_id,run_id,tick.symbol,tick.price,tick.volume,tick.source,tick.timestamp.isoformat(),received_at.isoformat(),tick.schema_version))
+    def get_run(self,run_id):
+        r=self._db.execute("SELECT * FROM shitzo_lab_runs WHERE run_id=?",(run_id,)).fetchone(); return self._row(r) if r else None
+    def latest_run(self):
+        r=self._db.execute("SELECT * FROM shitzo_lab_runs ORDER BY created_at DESC LIMIT 1").fetchone(); return self._row(r) if r else None
     def create_account(self,run_id,trader_id,starting_balance,now):
         with self._lock,self._db:
             self._db.execute("INSERT OR IGNORE INTO shitzo_accounts(run_id,trader_id,starting_balance,balance,realized_pnl,trades,wins,losses,max_drawdown,updated_at,schema_version,peak_balance) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",(run_id,trader_id,starting_balance,starting_balance,0.0,0,0,0,0.0,now.isoformat(),1,starting_balance))
@@ -64,6 +78,29 @@ class ShitzoRepository:
         return self._position(r) if r else None
     def get_trade(self,position_id):
         r=self._db.execute("SELECT * FROM shitzo_trades WHERE position_id=?",(position_id,)).fetchone(); return dict(r) if r else None
+    def list_accounts(self,limit=100,offset=0,run_id=None): return self._list("shitzo_accounts","updated_at",limit,offset,run_id)
+    def list_positions(self,limit=100,offset=0,run_id=None,status=None):
+        clauses=[];params=[]
+        if run_id: clauses.append("run_id=?");params.append(run_id)
+        if status: clauses.append("status=?");params.append(status)
+        return self._query("shitzo_positions","opened_at",clauses,params,limit,offset)
+    def list_decisions(self,limit=100,offset=0,run_id=None): return self._list("shitzo_decisions","decided_at",limit,offset,run_id)
+    def list_trades(self,limit=100,offset=0,run_id=None): return self._list("shitzo_trades","closed_at",limit,offset,run_id)
+    def count(self,table,run_id=None):
+        allowed={"shitzo_accounts","shitzo_positions","shitzo_decisions","shitzo_trades","shitzo_lab_runs"}
+        if table not in allowed: raise ValueError("unsupported Shitzo table")
+        return int(self._db.execute(f"SELECT COUNT(*) FROM {table}"+(" WHERE run_id=?" if run_id else ""),(run_id,) if run_id else ()).fetchone()[0])
+    def _list(self,table,order,limit,offset,run_id): return self._query(table,order,["run_id=?"] if run_id else [],[run_id] if run_id else [],limit,offset)
+    def _query(self,table,order,clauses,params,limit,offset):
+        sql=f"SELECT * FROM {table}"+(" WHERE "+" AND ".join(clauses) if clauses else "")+f" ORDER BY {order} DESC LIMIT ? OFFSET ?"
+        return [self._row(r) for r in self._db.execute(sql,(*params,limit,offset)).fetchall()]
+    @staticmethod
+    def _row(row):
+        result=dict(row)
+        for key in ("configuration","features","source_data_ids","frozen_context"):
+            if key in result and result[key] is not None: result[key]=json.loads(result[key])
+        result.pop("peak_balance",None)
+        return result
     @staticmethod
     def _position(r):
         return PaperPosition(r["position_id"],r["run_id"],r["trader_id"],r["symbol"],r["side"],r["entry_price"],r["quantity"],r["stop_loss"],r["take_profit"],datetime.fromisoformat(r["opened_at"]),r["decision_id"],PositionStatus(r["status"]),datetime.fromisoformat(r["closed_at"]) if r["closed_at"] else None,r["exit_price"],r["pnl_usd"],r["schema_version"])

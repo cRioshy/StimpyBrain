@@ -51,4 +51,13 @@ Creating hypotheses, adding evidence, evaluating, analysing, incubating, reactiv
 
 Training-run projections are GET-only. Metrics accept bounded pagination plus optional `hypothesis_key` and `split` filters. They expose descriptive persisted aggregates, never trading instructions or automatically promoted evidence.
 
-Shitzo S.2 adds no HTTP endpoint. Its virtual broker/repository remain disconnected and disabled; later projections must be GET-only and must never expose trade controls.
+Shitzo S.4 exposes bounded read-only projections:
+
+- `/api/stimpy/shitzo/status`
+- `/api/stimpy/shitzo/traders`
+- `/api/stimpy/shitzo/accounts`
+- `/api/stimpy/shitzo/positions`
+- `/api/stimpy/shitzo/decisions`
+- `/api/stimpy/shitzo/trades`
+
+List routes accept bounded `limit`, `offset` and optional `run_id`; positions also accept `status`. They contain no start, stop, feed or trade control. Every HTTP write remains 405.

@@ -31,5 +31,6 @@
 - Decision/outcome records may contain repeated updates; E.1.2 deliberately keeps only the final closed outcome per decision.
 - `KP-SH-S1-001`: Shitzo has no selected public market-data provider yet. S.1 deliberately contains only the read-only protocol, so no live data is collected.
 - `KP-SH-S2-001`: The virtual PaperBroker intentionally models zero fees and zero slippage. These must become explicit reviewed parameters before comparing strategy performance.
-- `KP-SH-S2-002`: No feed provider, orchestration, Evidence bridge or GET projection exists yet; traders and accounts can run only through explicit local test/service calls.
+- `KP-SH-S2-002`: No feed provider or Evidence bridge exists yet; S.4 orchestration accepts only explicit local validated ticks.
 - `KP-SH-S3-001`: Trend, Momentum and Contrarian rules are transparent experiments, not calibrated strategies. Their thresholds and Confidence mapping have no demonstrated predictive value.
+- `KP-SH-S4-001`: Shitzo GET lists are bounded to 100 rows in the current Controlcenter and have no pagination controls. The local API remains unauthenticated and loopback-only.

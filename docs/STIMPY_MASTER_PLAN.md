@@ -17,5 +17,6 @@ The only permitted integration direction is `Pandorick GET API -> Stimpy`. Stimp
 7. **Shitzo lab — S.1 completed:** disabled validated paper-research records, capability-minimal read-only feed contract, frozen bounded feature windows and isolated schema v12. PaperBroker, traders, live provider and activation remain later reviewed phases.
 8. **Shitzo lab — S.2 completed:** purely virtual balance-capped PaperBroker and transactional restart-safe repository in schema v13. No feed provider, trader or activation.
 9. **Shitzo lab — S.3 completed:** deterministic frozen-snapshot Trend, Momentum and Contrarian experiments with stable decisions and capped Confidence. No provider or activation.
+10. **Shitzo lab — S.4 completed:** explicit tick-by-tick no-thread orchestration, persistent run state, bounded GET projections and read-only Controlcenter summary. Still disabled; no provider.
 
 Every phase requires targeted and full tests, documentation, BEFORE/AFTER backups and a Draft PR. A phase must not be described as AI or neural learning unless a future reviewed implementation actually provides that behavior.

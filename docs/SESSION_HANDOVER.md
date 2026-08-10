@@ -1,5 +1,16 @@
 # Session handover
 
+## Shitzo Phase S.4 update — 2026-08-10
+
+- Added explicit `ShitzoLab` orchestration: local start, one validated tick at a time, position update, frozen window, three decisions, virtual broker and persistence. No thread, timer or provider exists.
+- Disabled and unstarted calls fail closed. `build_app()` composes but never starts Shitzo. Lab stop preserves open positions and records STOPPED state.
+- Added bounded GET-only status, traders, accounts, positions, decisions and trades endpoints plus a responsive read-only Controlcenter summary. All HTTP writes remain 405.
+- No real broker/order, credentials, network feed, Stimpy-worker connection, Evidence bridge, model mutation or automatic activation was added. Schema remains v13.
+- Targeted Lab/API tests 4/4, combined S.4/Controlcenter tests 6/6 and full suite 102/102 passed; JavaScript syntax, Python compile and diff checks passed. One earlier full run hit its 120-second command limit; the verbose rerun completed successfully in 105 seconds.
+- Verified BEFORE backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-10_18-49-54_BEFORE.zip` (804,138 bytes, 168 entries).
+- Planned verified AFTER backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-10_19-03-45_AFTER.zip`.
+- Branch: `agent/stimpy-shitzo-lab-api`. Next safe step: controlled fixture/replay inspection, then separately reviewed S.5 research-case Evidence bridge.
+
 ## Shitzo Phase S.3 update — 2026-08-09
 
 - Added capability-free deterministic `shitzo-trend`, `shitzo-momentum` and `shitzo-contrarian` traders operating only on immutable FeatureSnapshots.

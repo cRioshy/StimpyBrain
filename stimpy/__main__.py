@@ -11,5 +11,5 @@ def main():
     app["worker"].start(); app["server"].start()
     try: stopped.wait()
     finally:
-        app["server"].stop(); app["worker"].stop(); app["workflow"].repository.close(); app["store"].close()
+        app["server"].stop(); app["worker"].stop(); app["workflow"].repository.close(); app["shitzo_repository"].close(); app["store"].close()
 if __name__=="__main__": main()
