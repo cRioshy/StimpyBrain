@@ -1,5 +1,7 @@
 # Next steps
 
+For Social Intelligence: configure an official read-only X token outside Git, review X retention terms, select a licensed historical OHLCV source, run one bounded live-read test, and only then review a durable due-window scheduler.
+
 Completed: research foundations through E.1.2, Shitzo orchestration and an explicitly enabled continuous public paper-data collector. Safe defaults remain disabled.
 
 Next safe steps:

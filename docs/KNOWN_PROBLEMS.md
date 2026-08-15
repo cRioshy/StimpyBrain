@@ -1,5 +1,10 @@
 # Known problems
 
+- No official X credentials are configured; the safe runtime state is disabled.
+- Phase 1 has an explicit restart-safe reaction recorder but no unattended historical-candle scheduler/provider.
+- X access tiers, retention/deletion duties and polling capacity require operator review.
+- The transparent bilingual keyword rules are descriptive, not statistically calibrated.
+
 - `KP-S2-001`: Pandorick `/api/v1/learning/summary` and `/api/v1/graph/overview` exceeded the 5-second live verification timeout. They are not polled.
 - `KP-S2-002`: Pandorick has no verified `/api/v1/outcomes/recent`; outcome linking works for normalized synthetic/future outcome observations but no source is connected.
 - `KP-S2-003`: Stimpy API has no authentication. It is forced to `127.0.0.1` and should not be exposed externally.

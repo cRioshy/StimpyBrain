@@ -1,5 +1,16 @@
 # Session handover
 
+## Social Influence Observer — 2026-08-15
+
+- Added isolated, disabled-by-default public-X GET observation with missing-credential, rate-limited and degraded states.
+- Added transparent classification, stable deduplication, SQLite schema v14, seven reaction windows, baseline-adjusted analysis, conservative profiles and `NEW`-only candidate suggestions.
+- Added bounded Social GET API and responsive Controlcenter status/feed/watchlist/audit/influence views; ignored posts remain visible.
+- No X credentials are configured, so only labeled fixture validation was performed and no duration loop was started.
+- No orders, broker, Telegram, social writes, Pandorick writes or trading-signal bridge exist.
+- Verification: targeted integration 9/9 and full suite 114/114 passed; Python compile, JavaScript syntax and diff checks passed.
+- Verified BEFORE backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-15_18-30-12_BEFORE_SOCIAL_OBSERVER.zip`.
+- Verified AFTER backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-15_18-51-02_AFTER_SOCIAL_OBSERVER.zip` (210 entries, database included, integrity and foreign keys clean).
+
 ## Short-horizon scalping paper profile — 2026-08-15
 
 - Operator requested more completed experiments from minimal market movement instead of long-held positions.

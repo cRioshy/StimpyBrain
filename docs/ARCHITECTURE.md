@@ -1,5 +1,7 @@
 # Architecture
 
+The optional Social path is `configured public X accounts -> XReadOnlyAdapter -> SocialObserverWorker -> SocialClassifier -> SocialRepository -> explicit SocialResearchService -> GET-only API/Controlcenter`. It shares Stimpy's existing SQLite connection and lock but uses dedicated schema-v14 tables. It has no trading, broker, Telegram or Pandorick capability.
+
 ```mermaid
 flowchart LR
   subgraph P["PandorickKi — separate repository/process"]

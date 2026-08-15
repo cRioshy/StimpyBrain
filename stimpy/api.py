@@ -11,7 +11,7 @@ _STATIC_DIR=Path(__file__).with_name("static")
 CONTROL_ASSETS={"/controlcenter":("controlcenter.html","text/html; charset=utf-8"),"/controlcenter/":("controlcenter.html","text/html; charset=utf-8"),"/controlcenter/app.css":("controlcenter.css","text/css; charset=utf-8"),"/controlcenter/app.js":("controlcenter.js","text/javascript; charset=utf-8")}
 
 class ReadOnlyAPI:
-    def __init__(self,store,memory,learning,graph,worker=None,shitzo_lab=None,shitzo_repository=None,shitzo_collector=None): self.store,self.memory,self.learning,self.graph,self.worker,self.shitzo_lab,self.shitzo_repository,self.shitzo_collector=store,memory,learning,graph,worker,shitzo_lab,shitzo_repository,shitzo_collector
+    def __init__(self,store,memory,learning,graph,worker=None,shitzo_lab=None,shitzo_repository=None,shitzo_collector=None,social_worker=None,social_repository=None,social_config=None): self.store,self.memory,self.learning,self.graph,self.worker,self.shitzo_lab,self.shitzo_repository,self.shitzo_collector,self.social_worker,self.social_repository,self.social_config=store,memory,learning,graph,worker,shitzo_lab,shitzo_repository,shitzo_collector,social_worker,social_repository,social_config
     def health(self): return {"status":self.worker.status if self.worker else "STOPPED","database":"OK","read_only":True}
     def status(self): return self.worker.status_snapshot() if self.worker else {"status":"STOPPED","mode":"observe","read_only":True}
     def source_status(self): return self.worker.adapter.source_status() if self.worker else {"enabled":False,"available":None}
@@ -49,10 +49,26 @@ class ReadOnlyAPI:
     def shitzo_positions(self,limit=100,offset=0,run_id=None,status=None): return self._shitzo_list("positions",limit,offset,run_id,status)
     def shitzo_decisions(self,limit=100,offset=0,run_id=None): return self._shitzo_list("decisions",limit,offset,run_id)
     def shitzo_trades(self,limit=100,offset=0,run_id=None): return self._shitzo_list("trades",limit,offset,run_id)
+    def social_status(self):
+        base=self.social_worker.snapshot() if self.social_worker else {"status":"DISABLED","enabled":False,"active":False,"read_only":True,"social_writes":False,"trading_signals":False}
+        if self.social_repository: base.update({"worker":self.social_repository.worker_state(),"counts":self.social_repository.counts()})
+        return base
+    def social_feed(self,limit=100,offset=0,account=None,asset=None,relevance=None,status=None): return {"items":self.social_repository.list_posts(limit,offset,account,asset,relevance,status),"limit":limit,"offset":offset} if self.social_repository else {"items":[],"limit":limit,"offset":offset}
+    def social_interesting(self,limit=100,offset=0,account=None,asset=None,status=None):
+        items=[]
+        if self.social_repository:
+            for relevance in ("HIGH_INTEREST","INTERESTING"):
+                items.extend(self.social_repository.list_posts(limit,0,account,asset,relevance,status))
+        items.sort(key=lambda x:x["published_at"],reverse=True);return {"items":items[offset:offset+limit],"limit":limit,"offset":offset}
+    def social_post(self,social_post_id): return self.social_repository.get_post(social_post_id) if self.social_repository else None
+    def social_accounts(self): return {"items":self.social_repository.list_accounts(self.social_config.accounts if self.social_config else ())} if self.social_repository else {"items":[]}
+    def social_reactions(self,limit=100,offset=0): return {"items":self.social_repository.list_reactions(limit,offset),"limit":limit,"offset":offset} if self.social_repository else {"items":[]}
+    def social_influence(self,limit=100,offset=0): return {"items":self.social_repository.list_profiles(limit,offset),"label":"Historical Influence Association","causal_claims":0,"predictive_probability":False} if self.social_repository else {"items":[]}
+    def social_hypotheses(self,limit=100,offset=0): return {"items":self.social_repository.list_suggestions(limit,offset),"automatic_promotion":False} if self.social_repository else {"items":[]}
     def knowledge_graph(self): return self.graph()
     def statistics(self): return {"observations":self.store.count(),"memories":self.store.count("memories"),"workflow_results":self.store.count("workflow_results"),"evidence_results":self.store.count("evidence_results"),"reasoning_results":self.store.count("reasoning_results"),"critic_results":self.store.count("critic_results"),"incubation_tasks":self.store.count("incubation_tasks"),"patterns":self.store.count("patterns"),"pattern_cases":self.store.count("pattern_cases"),"hypotheses":self.store.count("hypotheses"),"hypothesis_evidence":self.store.count("hypothesis_evidence"),"hypothesis_evaluations":self.store.count("hypothesis_evaluations"),"hypothesis_reasoning":self.store.count("hypothesis_reasoning"),"hypothesis_critics":self.store.count("hypothesis_critics"),"hypothesis_incubations":self.store.count("hypothesis_incubations"),"hypothesis_lifecycle_events":self.store.count("hypothesis_lifecycle_events")}
 
-ROUTES={"/api/stimpy/health":"health","/api/stimpy/status":"status","/api/stimpy/source-status":"source_status","/api/stimpy/observations/recent":"observations","/api/stimpy/memory":"memory_snapshot","/api/stimpy/evidence/recent":"evidence_results","/api/stimpy/reasoning/recent":"reasoning_results","/api/stimpy/critic/recent":"critic_results","/api/stimpy/incubation":"incubations","/api/stimpy/patterns":"patterns","/api/stimpy/hypotheses":"hypotheses","/api/stimpy/hypothesis-incubations":"hypothesis_incubations","/api/stimpy/replay-runs":"replay_runs","/api/stimpy/training-runs":"training_runs","/api/stimpy/shitzo/status":"shitzo_status","/api/stimpy/shitzo/traders":"shitzo_traders","/api/stimpy/shitzo/accounts":"shitzo_accounts","/api/stimpy/shitzo/positions":"shitzo_positions","/api/stimpy/shitzo/decisions":"shitzo_decisions","/api/stimpy/shitzo/trades":"shitzo_trades","/api/stimpy/workflow-results/recent":"workflow_results","/api/stimpy/graph":"knowledge_graph","/api/stimpy/statistics":"statistics"}
+ROUTES={"/api/stimpy/health":"health","/api/stimpy/status":"status","/api/stimpy/source-status":"source_status","/api/stimpy/observations/recent":"observations","/api/stimpy/memory":"memory_snapshot","/api/stimpy/evidence/recent":"evidence_results","/api/stimpy/reasoning/recent":"reasoning_results","/api/stimpy/critic/recent":"critic_results","/api/stimpy/incubation":"incubations","/api/stimpy/patterns":"patterns","/api/stimpy/hypotheses":"hypotheses","/api/stimpy/hypothesis-incubations":"hypothesis_incubations","/api/stimpy/replay-runs":"replay_runs","/api/stimpy/training-runs":"training_runs","/api/stimpy/shitzo/status":"shitzo_status","/api/stimpy/shitzo/traders":"shitzo_traders","/api/stimpy/shitzo/accounts":"shitzo_accounts","/api/stimpy/shitzo/positions":"shitzo_positions","/api/stimpy/shitzo/decisions":"shitzo_decisions","/api/stimpy/shitzo/trades":"shitzo_trades","/api/stimpy/social/status":"social_status","/api/stimpy/social/feed":"social_feed","/api/stimpy/social/interesting":"social_interesting","/api/stimpy/social/accounts":"social_accounts","/api/stimpy/social/reactions":"social_reactions","/api/stimpy/social/influence":"social_influence","/api/stimpy/social/hypotheses":"social_hypotheses","/api/stimpy/workflow-results/recent":"workflow_results","/api/stimpy/graph":"knowledge_graph","/api/stimpy/statistics":"statistics"}
 class _Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed=urlparse(self.path); name=ROUTES.get(parsed.path); hypothesis_id=None
@@ -61,6 +77,8 @@ class _Handler(BaseHTTPRequestHandler):
         run_id=None
         if name is None and len(parts)==5 and parts[:3]==["api","stimpy","replay-runs"] and parts[4]=="cases": run_id=parts[3]; name="replay_cases"
         if name is None and len(parts)==5 and parts[:3]==["api","stimpy","training-runs"] and parts[4]=="metrics": run_id=parts[3]; name="training_metrics"
+        if name is None and len(parts)==5 and parts[:4]==["api","stimpy","social","posts"]: social_post_id=parts[4]; name="social_post"
+        else: social_post_id=None
         if name is None and len(parts) in {4,5} and parts[:3]==["api","stimpy","hypotheses"]:
             hypothesis_id=parts[3]
             name="hypothesis" if len(parts)==4 else {"evidence":"hypothesis_evidence","evaluation":"hypothesis_evaluation","reasoning":"hypothesis_reasoning","critic":"hypothesis_critic","lifecycle":"hypothesis_lifecycle"}.get(parts[4])
@@ -82,6 +100,9 @@ class _Handler(BaseHTTPRequestHandler):
         elif name=="replay_cases": kwargs={"run_id":run_id,"limit":limit,"offset":offset,"split":(query.get("split")or[None])[0]}
         elif name=="training_runs": kwargs={"limit":limit,"offset":offset}
         elif name=="training_metrics": kwargs={"run_id":run_id,"limit":limit,"offset":offset,"hypothesis_key":(query.get("hypothesis_key")or[None])[0],"split":(query.get("split")or[None])[0]}
+        elif name in {"social_feed","social_interesting"}: kwargs={"limit":limit,"offset":offset,"account":(query.get("account")or[None])[0],"asset":(query.get("asset")or[None])[0],"relevance":(query.get("relevance")or[None])[0],"status":(query.get("status")or[None])[0]} if name=="social_feed" else {"limit":limit,"offset":offset,"account":(query.get("account")or[None])[0],"asset":(query.get("asset")or[None])[0],"status":(query.get("status")or[None])[0]}
+        elif name=="social_post": kwargs={"social_post_id":social_post_id}
+        elif name in {"social_reactions","social_influence","social_hypotheses"}: kwargs={"limit":limit,"offset":offset}
         elif name in {"shitzo_accounts","shitzo_decisions","shitzo_trades"}: kwargs={"limit":limit,"offset":offset,"run_id":(query.get("run_id")or[None])[0]}
         elif name=="shitzo_positions": kwargs={"limit":limit,"offset":offset,"run_id":(query.get("run_id")or[None])[0],"status":(query.get("status")or[None])[0]}
         try:

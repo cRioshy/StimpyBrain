@@ -1,5 +1,7 @@
 # Stimpy master plan
 
+Social Intelligence Phase 1 supplies fail-closed public-X observation, transparent classification, schema-v14 research records, explicit seven-window reaction analysis, conservative profiles/candidates, GET projections and a read-only Controlcenter. Live credentials and automatic historical scheduling remain gated follow-ups.
+
 StimpyBrain is the independent, read-only research system beside PandorickKi. Pandorick remains the operational analysis source; Stimpy stores observations, evaluates evidence, reasons cautiously, criticizes its own analysis and builds internal knowledge. A future external system named Ren may supervise both systems, but no Ren logic belongs in Stimpy.
 
 ## Non-negotiable boundary

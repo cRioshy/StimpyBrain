@@ -1,5 +1,7 @@
 # Data model
 
+Schema v14 adds `social_posts`, `social_events`, `social_market_snapshots`, `social_reaction_results`, `social_account_profiles`, `social_hypothesis_links`, and `social_worker_state`. Identity is stable by platform/post ID; text hashes support same-text grouping; snapshots are unique per event, asset and window.
+
 Observation schema v1 contains `observation_id`, `event_id`, `correlation_id`, `source`, `source_endpoint`, `source_type`, UTC observed/source timestamps, symbol, market, sanitized payload, deterministic SHA-256 content hash and schema version. SQLite metadata additionally records JSONL filename, byte offset, payload size, processing status and creation time.
 
 Memory schema v1 contains the required identity/type/timestamps, source observation IDs, subject/relation/object, evidence and contradiction counts, bounded confidence, status, last verification, content and schema version. Allowed statuses are `OBSERVED`, `REPEATED`, `PROVISIONAL`, `SUPPORTED`, `CONTRADICTED`, `ARCHIVED`. Content explicitly records `causal=false`.

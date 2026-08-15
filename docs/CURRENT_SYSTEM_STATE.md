@@ -1,5 +1,7 @@
 # Current system state
 
+SQLite schema v14 adds the disabled-by-default Social Influence Observer: public X GET observation, transparent rule classification, dedicated Social research tables, explicit reaction-window recording and bounded read-only Controlcenter/API projections. It is isolated from Shitzo and Pandorick.
+
 Date: 2026-08-15. StimpyBrain is a standalone Python service. Composition occurs in `stimpy/app.py`; importing it starts nothing. `python -m stimpy` starts a local GET-only API, one controlled worker and the Shitzo collector only when explicitly enabled. The Pandorick poller and Shitzo autorun are disabled by default.
 
 ## Architecture and services

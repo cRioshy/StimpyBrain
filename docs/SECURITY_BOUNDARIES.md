@@ -1,5 +1,7 @@
 # Security boundaries
 
+The Social package has one external capability: official public X GET requests. It has no social write method, broker/order capability, Telegram integration or Pandorick reference. Tokens come only from environment variables and are never stored or logged. The feature defaults off and fails closed.
+
 - Pando and Stimpy are separate repositories and processes.
 - Stimpy accepts only loopback Pandorick URLs and exposes only a loopback API.
 - The source client implements GET only; writes are blocked before transport.
