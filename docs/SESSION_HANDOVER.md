@@ -1,5 +1,12 @@
 # Session handover
 
+## Stimpy live activity dashboard — 2026-08-15
+
+- Expanded the read-only Controlcenter into a live operational view for the active Shitzo paper collector.
+- It now shows provider health, last tick, tick/failure counters, current-run account balances/PnL/drawdown, open positions, recent decisions with transparent reasons and recent closed trades.
+- It uses only the already running bounded GET projections so deployment does not interrupt open paper positions. No write control, real-order capability or external frontend dependency was introduced.
+- Responsive tables scroll horizontally on small displays and collapse the two-column activity layout at 980px.
+
 ## Continuous Shitzo paper collector — 2026-08-15
 
 - Added an explicitly enabled continuous paper-data collector for BTC-USD, ETH-USD and XRP-USD using Coinbase Exchange's public credential-free GET ticker.

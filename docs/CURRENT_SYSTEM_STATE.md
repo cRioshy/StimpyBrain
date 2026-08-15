@@ -32,7 +32,7 @@ Active only when started: Stimpy worker and local API. Pandorick polling additio
 - `stimpy/demo_reasoning_prototype.py`: temporary, simulated local demo.
 - `stimpy/worker.py`: single in-process instance, atomic state and bounded shutdown.
 - `stimpy/api.py`: bounded GET projections including read-only Shitzo status/accounts/positions/decisions/trades; all write methods return 405.
-- `stimpy/static/controlcenter.*`: dependency-free responsive read-only Hypothesis dashboard, served locally by the existing API server.
+- `stimpy/static/controlcenter.*`: dependency-free responsive read-only dashboard for live paper activity and Hypothesis research, served locally by the existing API server.
 
 ## Workflow, learning and history
 
