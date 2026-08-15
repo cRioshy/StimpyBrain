@@ -33,6 +33,30 @@ class StimpyConfig:
     api_host: str="127.0.0.1"
     api_port: int=8765
     shutdown_timeout_seconds: float=10.0
+    incubation_default_seconds: int=3600
+    incubation_max_retries: int=3
+    pattern_min_cases: int=25
+    pattern_supported_min_cases: int=50
+    confidence_max_provisional: float=.70
+    hypothesis_min_investigating_cases: int=5
+    hypothesis_min_provisional_cases: int=25
+    hypothesis_min_supported_cases: int=100
+    hypothesis_min_supported_ratio: float=.70
+    hypothesis_max_contradicted_ratio: float=.30
+    hypothesis_max_text_chars: int=2000
+    shitzo_enabled: bool=False
+    shitzo_symbols: tuple[str,...]=("BTC-USD","ETH-USD","XRP-USD")
+    shitzo_starting_balance_usd: float=10000.0
+    shitzo_risk_per_trade: float=.005
+    shitzo_min_confidence: float=.55
+    shitzo_stop_distance_pct: float=.005
+    shitzo_take_profit_distance_pct: float=.010
+    shitzo_trend_threshold: float=.0005
+    shitzo_momentum_threshold: float=.0015
+    shitzo_contrarian_threshold: float=.0025
+    shitzo_autorun: bool=False
+    shitzo_poll_interval_seconds: float=5.0
+    shitzo_max_holding_seconds: float=0.0
     pandorick_endpoints: tuple[str,...]=(
         "/api/v1/health","/api/v1/system/status","/api/v1/brain/status",
         "/api/v1/decisions/recent?limit=100","/api/v1/statistics","/api/v1/warnings")
@@ -45,7 +69,17 @@ class StimpyConfig:
             max(.1,_float("STIMPY_PANDORICK_REQUEST_TIMEOUT_SECONDS",5)),max(0,min(_int("STIMPY_PANDORICK_MAX_RETRIES",2),5)),
             max(0,_float("STIMPY_PANDORICK_BACKOFF_SECONDS",2)),max(1,min(_int("STIMPY_OBSERVATION_BATCH_LIMIT",100),1000)),
             max(1024,_int("STIMPY_MAX_PAYLOAD_BYTES",65536)),data_dir,db,max(4096,_int("STIMPY_JSONL_ROTATION_BYTES",134217728)),
-            max(0,_float("STIMPY_MAX_FUTURE_SKEW_SECONDS",5)),"127.0.0.1",max(1,min(_int("STIMPY_API_PORT",8765),65535)),10.0)
+            max(0,_float("STIMPY_MAX_FUTURE_SKEW_SECONDS",5)),"127.0.0.1",max(1,min(_int("STIMPY_API_PORT",8765),65535)),10.0,
+            max(1,_int("STIMPY_INCUBATION_DEFAULT_SECONDS",3600)),max(1,min(_int("STIMPY_INCUBATION_MAX_RETRIES",3),10)),
+            max(2,_int("STIMPY_PATTERN_MIN_CASES",25)),max(2,_int("STIMPY_PATTERN_SUPPORTED_MIN_CASES",50)),max(0.0,min(_float("STIMPY_CONFIDENCE_MAX_PROVISIONAL",.70),.70)),
+            max(2,_int("STIMPY_HYPOTHESIS_MIN_INVESTIGATING_CASES",5)),max(2,_int("STIMPY_HYPOTHESIS_MIN_PROVISIONAL_CASES",25)),max(2,_int("STIMPY_HYPOTHESIS_MIN_SUPPORTED_CASES",100)),
+            max(.50,min(_float("STIMPY_HYPOTHESIS_MIN_SUPPORTED_RATIO",.70),.95)),max(.05,min(_float("STIMPY_HYPOTHESIS_MAX_CONTRADICTED_RATIO",.30),.50)),max(128,min(_int("STIMPY_HYPOTHESIS_MAX_TEXT_CHARS",2000),10000)),
+            _bool("SHITZO_ENABLED",False),tuple(item.strip().upper() for item in os.getenv("SHITZO_SYMBOLS","BTC-USD,ETH-USD,XRP-USD").split(",") if item.strip()),
+            max(1.0,_float("SHITZO_STARTING_BALANCE_USD",10000)),max(.0001,min(_float("SHITZO_RISK_PER_TRADE",.005),.05)),max(.01,min(_float("SHITZO_MIN_CONFIDENCE",.55),1.0)),
+            max(.0001,min(_float("SHITZO_STOP_DISTANCE_PCT",.005),.25)),max(.0001,min(_float("SHITZO_TAKE_PROFIT_DISTANCE_PCT",.010),.50)),
+            max(.00001,min(_float("SHITZO_TREND_THRESHOLD",.0005),.25)),max(.00001,min(_float("SHITZO_MOMENTUM_THRESHOLD",.0015),.25)),max(.00001,min(_float("SHITZO_CONTRARIAN_THRESHOLD",.0025),.25)),
+            _bool("SHITZO_AUTORUN",False),max(1.0,min(_float("SHITZO_POLL_INTERVAL_SECONDS",5),3600.0)),max(0.0,min(_float("SHITZO_MAX_HOLDING_SECONDS",0),604800.0)))
     def validate(self):
         if self.mode!="observe" or not self.read_only: raise ValueError("StimpyBrain is permanently observe/read-only")
         if not self.pandorick_base_url.startswith(("http://127.0.0.1","http://localhost")): raise ValueError("Pandorick URL must be local")
+        if not self.shitzo_symbols or not set(self.shitzo_symbols).issubset({"BTC-USD","ETH-USD","XRP-USD"}): raise ValueError("unsupported Shitzo symbols")

@@ -1,4 +1,5 @@
 """Non-causal reasoning over one observation and its transparent evidence."""
+import hashlib
 from .models import EvidenceResult,Observation,ReasoningResult,utc_now
 
 class ReasoningEngine:
@@ -12,4 +13,8 @@ class ReasoningEngine:
         if evidence.score>0: conclusion="This case contains provisional supporting evidence; no causal or trading conclusion follows."
         elif evidence.score<0: conclusion="This case contains contradictory evidence and should remain an observation."
         else: conclusion="This case is inconclusive and requires additional independent observations."
-        return ReasoningResult(observation.observation_id,evidence.score,tuple(reasons),tuple(counter),conclusion,confidence,uncertainty,utc_now())
+        assumptions=("reported outcome and profit use consistent source semantics",)
+        missing=["independent historical comparison cases"]
+        if observation.outcome in {"OPEN","UNKNOWN"}: missing.append("validated final outcome")
+        reasoning_id=hashlib.sha256(f"reasoning|v1|{observation.observation_id}|{evidence.evidence_id}".encode()).hexdigest()
+        return ReasoningResult(observation.observation_id,evidence.score,tuple(reasons),tuple(counter),conclusion,confidence,uncertainty,utc_now(),reasoning_id,evidence.evidence_id,assumptions,tuple(missing),1)

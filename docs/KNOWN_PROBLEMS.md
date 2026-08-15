@@ -1,5 +1,10 @@
 # Known problems
 
+- No official X credentials are configured; the safe runtime state is disabled.
+- Phase 1 has an explicit restart-safe reaction recorder but no unattended historical-candle scheduler/provider.
+- X access tiers, retention/deletion duties and polling capacity require operator review.
+- The transparent bilingual keyword rules are descriptive, not statistically calibrated.
+
 - `KP-S2-001`: Pandorick `/api/v1/learning/summary` and `/api/v1/graph/overview` exceeded the 5-second live verification timeout. They are not polled.
 - `KP-S2-002`: Pandorick has no verified `/api/v1/outcomes/recent`; outcome linking works for normalized synthetic/future outcome observations but no source is connected.
 - `KP-S2-003`: Stimpy API has no authentication. It is forced to `127.0.0.1` and should not be exposed externally.
@@ -7,6 +12,34 @@
 - `KP-S2-005`: an orphan JSONL line can remain if disk append succeeds but SQLite insertion fails. It is not indexed or processed, but repair/compaction tooling is not implemented.
 - `KP-S2-006`: Phase-2 memory supports evidence relations and contradictions but does not yet maintain a dedicated temporal-sequence table.
 - `KP-RP-001`: prototype Evidence rules are illustrative fixed thresholds and have not been statistically calibrated.
-- `KP-RP-002`: knowledge entries represent individual observations only; cross-observation support/contradiction promotion is not implemented, so the prototype never produces `SUPPORTED`.
-- `KP-RP-003`: incubation is a typed interface only. Persistence, scheduling, reactivation and comparison do not yet exist.
+- `KP-RP-002`: knowledge entries still represent individual observations only. Phase-C Patterns do not automatically promote or rewrite Knowledge entries.
+- `KP-B-001`: incubation persistence and explicit reactivation exist, but no scheduler or worker integration exists by design. An operator or future reviewed coordinator must call readiness/reactivation explicitly.
+- `KP-B-002`: Phase B compares two already persisted single-observation Reasoning results. Multi-observation evidence aggregation belongs to Pattern Learning and is not implied by incubation.
 - `KP-RP-004`: a caller that omits both an upstream observation ID and timestamp receives a content-stable ID; repeated identical content is intentionally treated as a duplicate.
+- `KP-A2-001`: Foundation result IDs are stable and persisted, but the isolated prototype is intentionally not connected to the worker. Automatic processing requires a separate reviewed integration phase.
+- `KP-A2-002`: Evidence quality currently distinguishes final from unresolved outcomes only. Broader source-quality, freshness and comparable-case calibration are future offline work.
+- `KP-C-001`: Pattern grouping currently uses exact market, symbol, decision and caller-supplied market-regime labels. Indicator bucketing and regime inference are not implemented.
+- `KP-C-002`: Pattern confidence is an explainable capped consistency score, not a calibrated probability. Thresholds require later review against an immutable offline dataset.
+- `KP-C-003`: Pattern Learning is intentionally explicit and not connected to the worker. Concurrent independent service callers are not an intended activation mode.
+- `KP-D1-001`: Hypothesis thresholds and confidence are conservative heuristics, not calibrated probabilities. `SUPPORTED` means supported by current stored evidence, not proven or predictive.
+- `KP-D1-002`: source independence currently collapses Evidence by persisted correlation identities. Timeframe, market-regime coverage and cross-provider dependence need a later reviewed extension.
+- `KP-D1-003`: Hypothesis Reasoning, Self Critic, incubation lifecycle, Inspiration Engine and Knowledge Graph promotion are intentionally not part of D.1.
+- `KP-D1-004`: Hypotheses can currently be created and evaluated only through the local Python service. No interactive CLI is installed and the HTTP API remains read-only.
+- `KP-D2-001`: Hypothesis Reasoning and Critic rules are transparent heuristics, not statistical inference or calibrated probability.
+- `KP-D2-002`: Hypothesis incubation is intentionally explicit; no scheduler marks or reactivates tasks automatically.
+- `KP-D2-003`: The Critic can warn about possible look-ahead or leakage but cannot prove a dataset is clean without a separate reviewed offline-data pipeline.
+- `KP-D3-001`: Lifecycle commands remain local Python service operations. The D.4 Controlcenter intentionally displays them but provides no interactive write controls or CLI.
+- `KP-D3-002`: Lifecycle events record a caller-supplied actor label, not an authenticated identity. This is acceptable only while commands remain local and the HTTP API remains GET-only.
+- `KP-D4-001`: The Controlcenter loads at most 100 Hypotheses, Evidence records and incubations per request. Pagination controls are not implemented yet.
+- `KP-D4-002`: The dashboard has no authentication and must remain on loopback. It is an operator view, not a remotely exposed administration interface.
+- The current Pandorick training archive is LONG-only, short-lived and strongly concentrated in LOW volatility and STRONG_UP regimes. Its metrics are descriptive and cannot establish predictive performance or causality.
+- Decision/outcome records may contain repeated updates; E.1.2 deliberately keeps only the final closed outcome per decision.
+- `KP-SH-COL-001`: The public ticker is a latest-price polling source, not a complete exchange trade stream. Network gaps are counted but missed ticks cannot be reconstructed automatically.
+- `KP-SH-COL-002`: Continuous collection has an in-process singleton only. A second independent Stimpy OS process is not yet prevented by a durable cross-process lock.
+- `KP-SH-COL-003`: Graceful shutdown preserves open virtual positions; a stopped run does not automatically resume those positions in a new run.
+- `KP-SH-S2-001`: The virtual PaperBroker intentionally models zero fees and zero slippage. These must become explicit reviewed parameters before comparing strategy performance.
+- `KP-SH-SCALP-001`: The short-horizon profile may record tiny gross wins that would become neutral or negative after real fees and slippage; current results are research-only.
+- `KP-SH-S2-002`: No feed provider or Evidence bridge exists yet; S.4 orchestration accepts only explicit local validated ticks.
+- `KP-SH-S3-001`: Trend, Momentum and Contrarian rules are transparent experiments, not calibrated strategies. Their thresholds and Confidence mapping have no demonstrated predictive value.
+- `KP-SH-S4-001`: Shitzo GET lists are bounded to 100 rows in the current Controlcenter and have no pagination controls. The local API remains unauthenticated and loopback-only.
+- `KP-SH-EXP-001`: Halving the three entry thresholds intentionally increases noise, false entries and losses. This is approved only for virtual research and is not evidence that the strategies improved.

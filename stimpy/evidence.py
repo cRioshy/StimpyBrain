@@ -1,4 +1,5 @@
-"""Transparent heuristic evidence scoring; not a probability model."""
+"""Transparent heuristic evidence scoring; never a probability model."""
+import hashlib
 from dataclasses import dataclass
 from .models import EvidenceResult,Observation,utc_now
 
@@ -12,6 +13,7 @@ class EvidenceRules:
     high_confidence_loss_points:int=-2
     minimum_score:int=-5
     maximum_score:int=7
+    schema_version:int=1
 
 class EvidenceEngine:
     def __init__(self,rules=None): self.rules=rules or EvidenceRules()
@@ -24,4 +26,7 @@ class EvidenceEngine:
         if observation.outcome=="LOSS": score+=r.loss_points; contradicting.append("reported outcome is LOSS")
         if observation.outcome=="LOSS" and observation.confidence>r.high_confidence_threshold: score+=r.high_confidence_loss_points; contradicting.append("high reported confidence conflicts with LOSS")
         normalized=max(0.0,min(1.0,(score-r.minimum_score)/(r.maximum_score-r.minimum_score)))
-        return EvidenceResult(score,normalized,tuple(supporting),tuple(contradicting),len(supporting)+len(contradicting),utc_now())
+        final_outcome=observation.outcome in {"WIN","LOSS","EXPIRED","CANCELLED"}
+        quality_score=1.0 if final_outcome else .75
+        evidence_id=hashlib.sha256(f"evidence|v{r.schema_version}|{observation.observation_id}".encode()).hexdigest()
+        return EvidenceResult(score,normalized,tuple(supporting),tuple(contradicting),len(supporting)+len(contradicting),utc_now(),evidence_id,observation.observation_id,quality_score,r.schema_version)

@@ -7,7 +7,7 @@ class KnowledgeGraph:
     def update(self,observation,reasoning,critic):
         knowledge_id=hashlib.sha256(f"knowledge|{observation.observation_id}".encode()).hexdigest()
         status=KnowledgeStatus.PROVISIONAL if reasoning.evidence_score>0 and critic.severity!="HIGH" else KnowledgeStatus.OBSERVED
-        candidate=KnowledgeEntry(knowledge_id,observation.observation_id,observation.symbol,observation.decision,reasoning.evidence_score,reasoning.reasons,reasoning.counterarguments,critic.issues,status,utc_now(),1)
+        candidate=KnowledgeEntry(knowledge_id,observation.observation_id,observation.symbol,observation.decision,reasoning.evidence_score,reasoning.reasons,reasoning.counterarguments,critic.issues,status,utc_now(),1,reasoning.reasoning_id,critic.critic_id)
         return self.store.save_knowledge(candidate)
     def load_all(self): return self.store.load_knowledge()
 

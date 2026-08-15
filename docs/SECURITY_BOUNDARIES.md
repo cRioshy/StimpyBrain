@@ -1,5 +1,7 @@
 # Security boundaries
 
+The Social package has one external capability: official public X GET requests. It has no social write method, broker/order capability, Telegram integration or Pandorick reference. Tokens come only from environment variables and are never stored or logged. The feature defaults off and fails closed.
+
 - Pando and Stimpy are separate repositories and processes.
 - Stimpy accepts only loopback Pandorick URLs and exposes only a loopback API.
 - The source client implements GET only; writes are blocked before transport.
@@ -8,4 +10,19 @@
 - Responses are schema-checked, size-bounded, recursively redacted, finite-number checked and timestamp checked.
 - JSONL is append-only; SQLite provides persistent identity indexes and foreign keys.
 - Workflow results are internal, terminal-only and always have zero order side effects.
+- Evidence, Reasoning and Critic projections are internal, GET-only and cannot authorize an order or write to Pandorick.
+- Incubation is explicit and local: no background scheduler, worker activation, network callback or confidence increase without new persisted evidence.
+- Pattern Learning is explicit and local: it requires persisted Evidence, preserves contradictions, cannot update models or strategies and has no automatic worker activation.
+- Hypotheses are explicit local research artifacts: bounded text, verified Observation links, append-only Evidence, zero causal claims and no automatic data collection, worker activation, model update or strategy change.
+- Hypothesis HTTP projections are GET-only. Creating, adding Evidence and evaluating are not network write operations.
+- Hypothesis Reasoning, Critic and incubation are local and deterministic. Reactivation requires new independent persisted Evidence; elapsed time alone cannot improve a result.
+- No scheduler, worker, Inspiration Engine or Knowledge promotion is connected to D.2.
+- Reject/archive commands require bounded non-secret reason and actor text, execute locally and store an immutable audit event atomically with the status change.
+- Terminal Hypotheses fail closed against later Evidence, evaluation, analysis and incubation reactivation. Lifecycle writes are not exposed through HTTP.
+- The Controlcenter is same-origin, dependency-free and GET-only. It uses DOM text nodes for persisted content, ships no write controls and receives restrictive CSP, `nosniff` and `no-store` headers.
+- The dashboard must remain loopback-only because the local API has no authentication.
 - `.env`, databases, observation data, logs, ZIPs, virtual environments and caches are ignored by Git.
+- Shitzo is disabled by default and has no market provider, network dependency, strategy trader or worker. Its feed protocol exposes read-only data retrieval only; tests reject order/transfer capabilities and scan the package AST for forbidden execution calls and networking/trading imports.
+- Shitzo S.2 `PaperBroker` is virtual arithmetic only: it receives frozen records, owns no HTTP/exchange client, caps notional at virtual balance, permits one open position per trader/symbol and writes only `shitzo_*` SQLite state. It remains disconnected from workers and API routes.
+- Shitzo S.3 traders receive only immutable FeatureSnapshots and return deterministic TraderDecisions. They have no repository, PaperBroker, feed, credentials, model mutation or networking capability; Confidence is capped at 0.75.
+- Shitzo S.4 orchestration requires explicit local `start()` and `process_tick()` calls and fails closed while disabled/unstarted. It creates no thread or scheduler, has no provider, never closes positions merely on stop, and exposes only bounded GET projections plus a read-only Controlcenter summary.

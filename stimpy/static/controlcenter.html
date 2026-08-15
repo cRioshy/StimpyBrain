@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Stimpy Live-Controlcenter</title>
+  <link rel="stylesheet" href="/controlcenter/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">STIMPY / FORSCHUNGSMODUS</p>
+      <h1>Stimpy Live-Controlcenter</h1>
+      <p class="subtitle">Was Stimpy gerade beobachtet, entscheidet und virtuell handelt.</p>
+    </div>
+    <div class="sync"><span id="connectionDot" class="dot"></span><span id="syncText">Verbinde …</span><button id="refreshButton" type="button">Aktualisieren</button></div>
+  </header>
+  <main>
+    <section id="socialPanel" class="training-panel social-panel" aria-label="Social Intelligence"></section>
+    <section id="shitzoPanel" class="training-panel" aria-label="Shitzo Paper-Labor"></section>
+    <section id="summary" class="summary" aria-label="Systemübersicht"></section>
+    <section id="trainingPanel" class="training-panel" aria-label="Pandorick Trainingsanalyse"></section>
+    <div class="workspace">
+      <aside class="rail" aria-label="Hypothesenliste">
+        <div class="rail-head"><h2>Hypothesen</h2><span id="resultCount">0</span></div>
+        <label class="search"><span>Suche</span><input id="searchInput" type="search" placeholder="Aussage oder Frage …"></label>
+        <label class="filter"><span>Status</span><select id="statusFilter"><option value="">Alle</option><option>NEW</option><option>INVESTIGATING</option><option>INCUBATING</option><option>PROVISIONAL</option><option>SUPPORTED</option><option>CONTRADICTED</option><option>REJECTED</option><option>ARCHIVED</option></select></label>
+        <div id="hypothesisList" class="hypothesis-list"></div>
+      </aside>
+      <section id="detail" class="detail" aria-live="polite">
+        <div class="empty"><p class="eyebrow">BEREIT</p><h2>Hypothese auswählen</h2><p>Wähle links einen Forschungseintrag aus. Diese Ansicht verändert keine Daten.</p></div>
+      </section>
+    </div>
+  </main>
+  <footer>READ-ONLY · KEINE ORDERS · KEINE PANDORICK-SCHREIBZUGRIFFE · KEINE KAUSALEN BEHAUPTUNGEN</footer>
+  <script src="/controlcenter/app.js" defer></script>
+</body>
+</html>
