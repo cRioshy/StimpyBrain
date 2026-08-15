@@ -1,5 +1,13 @@
 # Session handover
 
+## Aggressive paper research profile — 2026-08-15
+
+- Operator approved more frequent virtual entries and explicitly accepts losses as research cases.
+- Runtime profile: Trend 0.0002, Momentum 0.0006, Contrarian 0.0010; virtual risk remains 0.001 per trade. Stop-Loss and Take-Profit are unchanged.
+- Run configuration now freezes all thresholds, Confidence gate, risk, Stop/Take distances, autorun and provider; strategy versions contain the exact threshold for later comparison.
+- The two positions from the prior run were closed at public market prices before profile switching as `SESSION_SHUTDOWN`: ETH SHORT -1.342897 USD and XRP SHORT -3.196803 USD.
+- This profile increases experiments and likely noise; it collects learning material but does not yet mutate or retrain strategies automatically.
+
 ## Stimpy live activity dashboard — 2026-08-15
 
 - Expanded the read-only Controlcenter into a live operational view for the active Shitzo paper collector.
