@@ -1,8 +1,9 @@
 # Known problems
 
-- No official X credentials are configured; the safe runtime state is disabled.
-- Phase 1 has an explicit restart-safe reaction recorder but no unattended historical-candle scheduler/provider.
-- X access tiers, retention/deletion duties and polling capacity require operator review.
+- Social Memory Lite is disabled by default and has not performed a live-duration collection run in this implementation task.
+- Reddit requires a free app client ID/secret; without them its source state remains disabled while RSS can run independently.
+- Binance and Kraken have no verified official general RSS URL in the current source registry and therefore remain `UNAVAILABLE_NO_OFFICIAL_FEED`; no scraping fallback exists.
+- Coinbase public minute candles can have gaps or availability limits; affected reaction jobs retry three times and then remain visibly failed.
 - The transparent bilingual keyword rules are descriptive, not statistically calibrated.
 
 - `KP-S2-001`: Pandorick `/api/v1/learning/summary` and `/api/v1/graph/overview` exceeded the 5-second live verification timeout. They are not polled.

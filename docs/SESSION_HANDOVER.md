@@ -1,5 +1,17 @@
 # Session handover
 
+## Social Memory Lite — 2026-08-15
+
+- Replaced the default Social composition with disabled-by-default RSS/Reddit observation for BTC, ETH and XRP; X/Twitter is explicitly absent from the active worker.
+- Added bounded RSS/Atom parsing, official Reddit OAuth read-only listings, stable post/event IDs, schema-v15 source state, five-window reaction jobs, immutable queue audit events, public Coinbase candle measurements and historical matches.
+- Added GET-only `/api/stimpy/social-lite/*` projections and Control Center areas for Social Feed, Interesting Events, Market Reactions, Historical Matches, Currently Processing and Queue Status.
+- Binance and Kraken are fail-closed as `UNAVAILABLE_NO_OFFICIAL_FEED`; there is no scraping fallback. Reddit is independently disabled without local credentials.
+- No orders, broker, Telegram, X, Decision Core, Pandorick feedback or trading-signal output was added. Activation defaults all remain false.
+- Verification: targeted Social Memory Lite 5/5 and full suite 119/119 passed; Python compile, JavaScript syntax and diff checks passed.
+- Verified BEFORE backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-15_19-59-32_BEFORE_SOCIAL_MEMORY_LITE.zip`.
+- Verified AFTER backup: `C:\Users\testt\Desktop\StimpyBackUp_2026-08-15_20-20-48_AFTER_SOCIAL_MEMORY_LITE.zip` (246 entries, source/tests/database included).
+- No live-duration collection was started; validation used deterministic fixtures only.
+
 ## Social Influence Observer — 2026-08-15
 
 - Added isolated, disabled-by-default public-X GET observation with missing-credential, rate-limited and degraded states.

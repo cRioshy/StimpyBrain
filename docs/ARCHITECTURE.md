@@ -1,6 +1,6 @@
 # Architecture
 
-The optional Social path is `configured public X accounts -> XReadOnlyAdapter -> SocialObserverWorker -> SocialClassifier -> SocialRepository -> explicit SocialResearchService -> GET-only API/Controlcenter`. It shares Stimpy's existing SQLite connection and lock but uses dedicated schema-v14 tables. It has no trading, broker, Telegram or Pandorick capability.
+The optional Social path is `public RSS / official Reddit API -> read-only adapters -> SocialMemoryLiteWorker -> SocialClassifier -> SocialRepository -> restart-safe reaction queue -> public historical candles -> SocialResearchService -> historical matches/candidates -> GET-only API/Controlcenter`. It shares Stimpy's existing SQLite connection and lock but uses dedicated schema-v15 tables. It has no trading, broker, Telegram, Decision Core or Pandorick capability. X/Twitter code retained for compatibility is dormant and is not composed by `build_app()`.
 
 ```mermaid
 flowchart LR

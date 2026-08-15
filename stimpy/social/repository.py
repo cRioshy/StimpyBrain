@@ -45,12 +45,30 @@ CREATE TABLE IF NOT EXISTS social_hypothesis_links(
 CREATE TABLE IF NOT EXISTS social_worker_state(
  platform TEXT PRIMARY KEY,status TEXT NOT NULL,last_poll_at TEXT,last_success_at TEXT,last_error TEXT,posts_checked INTEGER NOT NULL,ignored INTEGER NOT NULL,
  interesting INTEGER NOT NULL,high_interest INTEGER NOT NULL,rate_limit_resets INTEGER NOT NULL,updated_at TEXT NOT NULL,schema_version INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS social_source_state(
+ source_id TEXT PRIMARY KEY,source_type TEXT NOT NULL,display_name TEXT NOT NULL,status TEXT NOT NULL,last_poll_at TEXT,last_success_at TEXT,
+ last_error TEXT,items_seen INTEGER NOT NULL,items_stored INTEGER NOT NULL,updated_at TEXT NOT NULL,schema_version INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS social_reaction_jobs(
+ job_id TEXT PRIMARY KEY,event_id TEXT NOT NULL,asset_symbol TEXT NOT NULL,window_label TEXT NOT NULL,due_at TEXT NOT NULL,
+ status TEXT NOT NULL CHECK(status IN ('PENDING','PROCESSING','COMPLETED','FAILED_RETRYABLE','FAILED_FINAL')),
+ attempts INTEGER NOT NULL,last_error TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,schema_version INTEGER NOT NULL,
+ UNIQUE(event_id,asset_symbol,window_label),FOREIGN KEY(event_id) REFERENCES social_events(event_id));
+CREATE INDEX IF NOT EXISTS ix_social_reaction_jobs_due ON social_reaction_jobs(status,due_at);
+CREATE TABLE IF NOT EXISTS social_queue_events(
+ queue_event_id TEXT PRIMARY KEY,job_id TEXT NOT NULL,from_status TEXT,to_status TEXT NOT NULL,reason TEXT NOT NULL,created_at TEXT NOT NULL,schema_version INTEGER NOT NULL,
+ FOREIGN KEY(job_id) REFERENCES social_reaction_jobs(job_id));
+CREATE INDEX IF NOT EXISTS ix_social_queue_events_job_time ON social_queue_events(job_id,created_at);
+CREATE TABLE IF NOT EXISTS social_historical_matches(
+ match_id TEXT PRIMARY KEY,event_id TEXT NOT NULL,matched_event_id TEXT NOT NULL,asset_symbol TEXT NOT NULL,similarity REAL NOT NULL,reasons TEXT NOT NULL,
+ created_at TEXT NOT NULL,schema_version INTEGER NOT NULL,UNIQUE(event_id,matched_event_id,asset_symbol),
+ FOREIGN KEY(event_id) REFERENCES social_events(event_id),FOREIGN KEY(matched_event_id) REFERENCES social_events(event_id));
+CREATE INDEX IF NOT EXISTS ix_social_historical_matches_event ON social_historical_matches(event_id,similarity DESC);
 """
 
 def _decode(row):
     if not row:return None
     item=dict(row)
-    for key in ("topic_tags","asset_symbols","relevance_reasons","engagement_snapshot","source_analysis_ids"):
+    for key in ("topic_tags","asset_symbols","relevance_reasons","engagement_snapshot","source_analysis_ids","reasons"):
         if key in item:
             try:item[key]=json.loads(item[key])
             except (TypeError,json.JSONDecodeError):item[key]=[] if key!="engagement_snapshot" else {}
@@ -63,6 +81,7 @@ class SocialRepository:
         with self._db:
             self._db.execute("PRAGMA foreign_keys=ON");self._db.executescript(SOCIAL_SCHEMA)
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(14,datetime.now(UTC).isoformat()))
+            self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(15,datetime.now(UTC).isoformat()))
     def close(self):
         if self._owns_connection:self._db.close()
     @property
@@ -75,6 +94,36 @@ class SocialRepository:
     def save_event(self,e:SocialInfluenceEvent):
         with self._lock,self._db:
             cur=self._db.execute("INSERT OR IGNORE INTO social_events VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",(e.event_id,e.social_post_id,e.platform,e.account_handle,e.primary_topic,json.dumps(e.asset_symbols),e.published_at.isoformat(),e.relevance_score,e.sentiment_label.value,e.intensity_score,e.market_snapshot_t0_id,e.status.value,e.schema_version));return cur.rowcount==1
+    def enqueue_reaction_jobs(self,event_id,assets,published_at):
+        offsets={"T0":0,"+5m":300,"+30m":1800,"+2h":7200,"+24h":86400};now=datetime.now(UTC).isoformat();created=0
+        with self._lock,self._db:
+            for asset in assets:
+                for label,seconds in offsets.items():
+                    due=datetime.fromtimestamp(published_at.timestamp()+seconds,UTC).isoformat();job_id=stable_id("social-job",event_id,asset,label)
+                    cur=self._db.execute("INSERT OR IGNORE INTO social_reaction_jobs VALUES(?,?,?,?,?,'PENDING',0,NULL,?,?,1)",(job_id,event_id,asset,label,due,now,now));created+=cur.rowcount
+                    if cur.rowcount:self._queue_event(job_id,None,"PENDING","created",now)
+        return created
+    def _queue_event(self,job_id,from_status,to_status,reason,created_at=None):
+        created_at=created_at or datetime.now(UTC).isoformat();event_id=stable_id("queue-event",job_id,from_status,to_status,reason,created_at)
+        self._db.execute("INSERT OR IGNORE INTO social_queue_events VALUES(?,?,?,?,?,?,1)",(event_id,job_id,from_status,to_status,reason,created_at))
+    def claim_due_jobs(self,now=None,limit=25):
+        now=(now or datetime.now(UTC)).isoformat();rows=self._db.execute("SELECT * FROM social_reaction_jobs WHERE status IN ('PENDING','FAILED_RETRYABLE') AND due_at<=? AND attempts<3 ORDER BY due_at LIMIT ?",(now,max(1,min(limit,100)))).fetchall();claimed=[]
+        with self._lock,self._db:
+            for row in rows:
+                cur=self._db.execute("UPDATE social_reaction_jobs SET status='PROCESSING',attempts=attempts+1,updated_at=? WHERE job_id=? AND status=?",(now,row["job_id"],row["status"]))
+                if cur.rowcount:self._queue_event(row["job_id"],row["status"],"PROCESSING","claimed",now);claimed.append({**dict(row),"status":"PROCESSING","attempts":row["attempts"]+1})
+        return claimed
+    def finish_job(self,job_id,success,error=None):
+        row=self._db.execute("SELECT * FROM social_reaction_jobs WHERE job_id=?",(job_id,)).fetchone()
+        if not row:return False
+        status="COMPLETED" if success else "FAILED_FINAL" if int(row["attempts"])>=3 else "FAILED_RETRYABLE";now=datetime.now(UTC).isoformat()
+        with self._lock,self._db:self._db.execute("UPDATE social_reaction_jobs SET status=?,last_error=?,updated_at=? WHERE job_id=?",(status,error,now,job_id));self._queue_event(job_id,row["status"],status,"completed" if success else (error or "failed"),now)
+        return True
+    def recover_processing_jobs(self):
+        now=datetime.now(UTC).isoformat();rows=self._db.execute("SELECT job_id FROM social_reaction_jobs WHERE status='PROCESSING'").fetchall()
+        with self._lock,self._db:
+            for row in rows:self._db.execute("UPDATE social_reaction_jobs SET status='FAILED_RETRYABLE',last_error='restart recovery',updated_at=? WHERE job_id=?",(now,row["job_id"]));self._queue_event(row["job_id"],"PROCESSING","FAILED_RETRYABLE","restart recovery",now)
+        return len(rows)
     def save_snapshot(self,event_id,asset,window_label,price,volume,volatility,regime,snapshot_at,source,snapshot_id):
         with self._lock,self._db:self._db.execute("INSERT OR IGNORE INTO social_market_snapshots VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",(snapshot_id,event_id,asset,window_label,float(price),volume,volatility,regime,snapshot_at.isoformat(),source,datetime.now(UTC).isoformat(),1))
     def event(self,event_id):return _decode(self._db.execute("SELECT * FROM social_events WHERE event_id=?",(event_id,)).fetchone())
@@ -104,6 +153,28 @@ class SocialRepository:
     def list_reactions(self,limit=100,offset=0):return [_decode(r) for r in self._db.execute("SELECT * FROM social_reaction_results ORDER BY updated_at DESC LIMIT ? OFFSET ?",(max(1,min(limit,100)),max(0,offset))).fetchall()]
     def list_profiles(self,limit=100,offset=0):return [_decode(r) for r in self._db.execute("SELECT * FROM social_account_profiles ORDER BY case_count DESC LIMIT ? OFFSET ?",(max(1,min(limit,100)),max(0,offset))).fetchall()]
     def list_suggestions(self,limit=100,offset=0):return [_decode(r) for r in self._db.execute("SELECT * FROM social_hypothesis_links ORDER BY updated_at DESC LIMIT ? OFFSET ?",(max(1,min(limit,100)),max(0,offset))).fetchall()]
+    def source_state(self):return [_decode(r) for r in self._db.execute("SELECT * FROM social_source_state ORDER BY source_type,display_name").fetchall()]
+    def update_source_state(self,source_id,source_type,display_name,status,error=None,seen=0,stored=0):
+        now=datetime.now(UTC).isoformat();success=now if status=="OK" else None
+        with self._lock,self._db:self._db.execute("INSERT INTO social_source_state VALUES(?,?,?,?,?,?,?,?,?,?,1) ON CONFLICT(source_id) DO UPDATE SET status=excluded.status,last_poll_at=excluded.last_poll_at,last_success_at=COALESCE(excluded.last_success_at,social_source_state.last_success_at),last_error=excluded.last_error,items_seen=social_source_state.items_seen+excluded.items_seen,items_stored=social_source_state.items_stored+excluded.items_stored,updated_at=excluded.updated_at",(source_id,source_type,display_name,status,now,success,error,seen,stored,now))
+    def queue_status(self,limit=100,offset=0):
+        items=[_decode(r) for r in self._db.execute("SELECT j.*,e.account_handle,e.primary_topic FROM social_reaction_jobs j JOIN social_events e ON e.event_id=j.event_id ORDER BY j.due_at LIMIT ? OFFSET ?",(max(1,min(limit,100)),max(0,offset))).fetchall()];counts={r["status"]:r["n"] for r in self._db.execute("SELECT status,COUNT(*) n FROM social_reaction_jobs GROUP BY status")};return {"items":items,"counts":counts}
+    def refresh_historical_matches(self,event_id,asset):
+        current=self._db.execute("SELECT * FROM social_events WHERE event_id=?",(event_id,)).fetchone()
+        if not current:return 0
+        rows=self._db.execute("SELECT DISTINCT e.* FROM social_events e JOIN social_reaction_results r ON r.social_event_id=e.event_id WHERE e.event_id<>? AND r.asset_symbol=? AND r.analysis_status='COMPLETED' ORDER BY e.published_at DESC LIMIT 100",(event_id,asset)).fetchall();created=0;now=datetime.now(UTC).isoformat()
+        current_assets=set(json.loads(current["asset_symbols"]))
+        with self._lock,self._db:
+            for row in rows:
+                reasons=[];similarity=.4
+                if row["primary_topic"]==current["primary_topic"]:similarity+=.35;reasons.append("same primary topic")
+                if current_assets.intersection(json.loads(row["asset_symbols"])):similarity+=.25;reasons.append("shared asset")
+                match_id=stable_id("social-match",event_id,row["event_id"],asset);cur=self._db.execute("INSERT OR IGNORE INTO social_historical_matches VALUES(?,?,?,?,?,?,?,1)",(match_id,event_id,row["event_id"],asset,min(1,similarity),json.dumps(reasons),now));created+=cur.rowcount
+        return created
+    def list_historical_matches(self,event_id=None,limit=100,offset=0):
+        args=[];where=""
+        if event_id:where=" WHERE m.event_id=?";args.append(event_id)
+        args.extend((max(1,min(limit,100)),max(0,offset)));return [_decode(r) for r in self._db.execute("SELECT m.*,e.account_handle,e.primary_topic,e.published_at FROM social_historical_matches m JOIN social_events e ON e.event_id=m.matched_event_id"+where+" ORDER BY m.similarity DESC LIMIT ? OFFSET ?",args).fetchall()]
     def refresh_profiles(self,min_cases=25,strong_threshold=.5):
         groups=self._db.execute("SELECT e.account_handle,r.asset_symbol,COUNT(*) cases,SUM(CASE WHEN r.reaction_strength>=? THEN 1 ELSE 0 END) strong,SUM(CASE WHEN r.reaction_direction='NONE' THEN 1 ELSE 0 END) none_count,SUM(CASE WHEN r.market_was_already_moving=1 THEN 1 ELSE 0 END) counter_count,GROUP_CONCAT(r.analysis_id) ids FROM social_reaction_results r JOIN social_events e ON e.event_id=r.social_event_id WHERE r.analysis_status='COMPLETED' GROUP BY e.account_handle,r.asset_symbol",(strong_threshold,)).fetchall();now=datetime.now(UTC).isoformat();created=0
         with self._lock,self._db:

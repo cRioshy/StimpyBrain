@@ -1,6 +1,6 @@
 # Current system state
 
-SQLite schema v14 adds the disabled-by-default Social Influence Observer: public X GET observation, transparent rule classification, dedicated Social research tables, explicit reaction-window recording and bounded read-only Controlcenter/API projections. It is isolated from Shitzo and Pandorick.
+SQLite schema v15 adds disabled-by-default Social Memory Lite: public RSS and official Reddit API observation, transparent rule classification, restart-safe reaction jobs, historical matches and bounded read-only Controlcenter/API projections. The active composition does not use X/Twitter and is isolated from Shitzo and Pandorick.
 
 Date: 2026-08-15. StimpyBrain is a standalone Python service. Composition occurs in `stimpy/app.py`; importing it starts nothing. `python -m stimpy` starts a local GET-only API, one controlled worker and the Shitzo collector only when explicitly enabled. The Pandorick poller and Shitzo autorun are disabled by default.
 
@@ -24,6 +24,7 @@ Active only when started: Stimpy worker and local API. Pandorick polling additio
 - `stimpy/pandorick_training.py`: explicit, filtered decision/outcome ZIP analysis for five descriptive hypothesis families.
 - `stimpy/shitzo/`: paper-research foundation, virtual broker, pure traders and tick orchestration.
 - `stimpy/public_market_feed.py`, `shitzo_collector.py`: credential-free GET feed and explicitly enabled continuous collection loop.
+- `stimpy/social/lite_worker.py`, `stimpy/social/adapters/`: RSS/Reddit observation and restart-safe T0/+5m/+30m/+2h/+24h reaction processing.
 - `stimpy/evidence.py`, `reasoning.py`, `self_critic.py`: pure heuristic analysis.
 - `stimpy/incubation_service.py`: explicit persistent task creation, readiness, reactivation, comparison, cancellation and bounded failure handling.
 - `stimpy/pattern_learning.py`: explicit persisted comparable-case grouping, regime separation, contradiction counting and thresholded Pattern status.
@@ -46,7 +47,7 @@ Phase D.1 stores research questions as Hypotheses, never as facts. D.2 adds immu
 
 ## Storage and commands
 
-`stimpy_data/{observations,memory,state,database,logs}` is local and Git-ignored. SQLite foreign keys are enabled and Stimpy schema migration is version 13. Tests: `python -m compileall -q stimpy tests`; `python -m unittest discover -s tests -v`.
+`stimpy_data/{observations,memory,state,database,logs}` is local and Git-ignored. SQLite foreign keys are enabled and the latest Stimpy schema migration is version 15. Tests: `python -m compileall -q stimpy tests`; `python -m unittest discover -s tests -v`.
 
 ## Risks
 

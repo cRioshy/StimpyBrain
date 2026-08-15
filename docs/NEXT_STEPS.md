@@ -1,6 +1,6 @@
 # Next steps
 
-For Social Intelligence: configure an official read-only X token outside Git, review X retention terms, select a licensed historical OHLCV source, run one bounded live-read test, and only then review a durable due-window scheduler.
+For Social Memory Lite: review source terms, optionally configure Reddit credentials outside Git, enable RSS first for one bounded live-read test, inspect queue/candle gaps and SQLite growth, then explicitly approve longer observation. Do not add X, scraping or a feedback connection.
 
 Completed: research foundations through E.1.2, Shitzo orchestration and an explicitly enabled continuous public paper-data collector. Safe defaults remain disabled.
 
