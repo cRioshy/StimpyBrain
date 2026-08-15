@@ -32,6 +32,6 @@ flowchart LR
 
 There is no edge from Stimpy back to Pandorick. The HTTP client exposes GET only and accepts loopback HTTP base URLs only. Raw observation nodes are not added to the architecture graph.
 
-Shitzo S.4 remains manually driven inside Stimpy: `explicit validated tick -> PriceWindow -> frozen FeatureSnapshot -> deterministic traders -> virtual PaperBroker -> ShitzoRepository -> GET-only API/Controlcenter`. `ShitzoLab` owns no thread, timer or network client. There is no concrete provider, Stimpy-worker connection, Evidence bridge or HTTP write edge.
+Shitzo data flow is `public GET ticker -> explicitly enabled continuous collector -> validated tick -> PriceWindow -> frozen FeatureSnapshot -> deterministic traders -> virtual PaperBroker -> ShitzoRepository -> GET-only API/Controlcenter`. `ShitzoLab` remains free of networking and threading; the separate collector owns the loop. There is no Evidence bridge, real broker or HTTP write edge.
 
 The prototype is deliberately not connected to the worker, HTTP polling, broker, Telegram or any order path. The Hypothesis Controlcenter reads bounded same-origin API projections and has no forms or write calls. Its static assets are served with a restrictive Content Security Policy. Reject/archive commands remain explicit local Python calls. There is no background scheduler or automatic strategy change.

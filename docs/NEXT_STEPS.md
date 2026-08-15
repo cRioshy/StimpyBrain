@@ -1,11 +1,11 @@
 # Next steps
 
-Completed: research foundations through E.1.2 and Shitzo S.4 explicit bounded orchestration, GET API and read-only Controlcenter summary. Shitzo remains disabled and inactive.
+Completed: research foundations through E.1.2, Shitzo orchestration and an explicitly enabled continuous public paper-data collector. Safe defaults remain disabled.
 
 Next safe steps:
 
-1. Select and document one public read-only market-data provider before implementing a feed adapter.
-2. Run a short controlled fixture/replay session before selecting a real public provider; inspect persistence and restart behavior.
+1. Monitor continuous collector gaps, SQLite growth and restart behavior before expanding symbols or feeds.
+2. Add a durable cross-process lock and an explicit policy for open positions across restarts.
 3. Design S.5 Evidence Bridge as a deduplicated reviewed research-case boundary, never direct promotion.
 3. Add explicit fee/slippage parameters before performance comparison, retaining zero defaults for compatibility.
 4. Review E.1.2 metrics before any explicit audited Evidence mapping; never promote automatically.

@@ -1,14 +1,14 @@
 # Current system state
 
-Date: 2026-08-01. StimpyBrain is a standalone Python service. Composition occurs in `stimpy/app.py`; importing it starts nothing. `python -m stimpy` starts a local GET-only API and one controlled worker. The Pandorick poller is installed but disabled by default. A separate local reasoning prototype can process caller-supplied simulated records and is not wired into that worker.
+Date: 2026-08-15. StimpyBrain is a standalone Python service. Composition occurs in `stimpy/app.py`; importing it starts nothing. `python -m stimpy` starts a local GET-only API, one controlled worker and the Shitzo collector only when explicitly enabled. The Pandorick poller and Shitzo autorun are disabled by default.
 
 ## Architecture and services
 
 Verified Pandorick Rick API GET envelopes flow through `ReadOnlyHttpClient -> ObservationAdapter -> ObservationNormalizer -> ObservationStore`. The store appends sanitized raw records to rotating JSONL and maintains a synchronized SQLite index. New records feed evidence-counted Memory, descriptive Learning and the internal observe-only Workflow Gate. The architecture Knowledge Graph and local HTTP API expose bounded projections.
 
-The isolated prototype flows through `Observer -> Memory facade -> EvidenceEngine -> ReasoningEngine -> SelfCritic -> KnowledgeGraph`. SQLite schema v13 also supports disabled Shitzo S.4: validated records, frozen windows, deterministic traders, virtual PaperBroker, explicit tick-by-tick `ShitzoLab` orchestration and GET-only projections. No provider, scheduler or automatic activation exists.
+SQLite schema v13 supports Shitzo's validated records, frozen windows, deterministic traders, virtual PaperBroker and GET-only projections. An optional continuous collector uses a public credential-free GET ticker and is activated only by two explicit environment flags.
 
-Active only when started: Stimpy worker and local API. Pandorick polling additionally requires `STIMPY_PANDORICK_ENABLED=true`; its default is false. Shitzo does not start with Stimpy and its virtual broker has no real execution path. There are no real broker, order, Telegram or Pandorick-write components.
+Active only when started: Stimpy worker and local API. Pandorick polling additionally requires `STIMPY_PANDORICK_ENABLED=true`. Continuous Shitzo collection requires `SHITZO_ENABLED=true` and `SHITZO_AUTORUN=true`; both are false by default. Its virtual broker has no real execution path.
 
 ## Entry points and data flow
 
@@ -20,7 +20,8 @@ Active only when started: Stimpy worker and local API. Pandorick polling additio
 - `stimpy/observation_store.py`: rotating JSONL and SQLite schema v10.
 - `stimpy/offline_replay.py`: explicit chronological OHLCV CSV replay with stable runs and split-safe cases.
 - `stimpy/pandorick_training.py`: explicit, filtered decision/outcome ZIP analysis for five descriptive hypothesis families.
-- `stimpy/shitzo/`: disabled paper-research foundation, virtual broker, pure traders and explicit no-thread/no-network Lab orchestration.
+- `stimpy/shitzo/`: paper-research foundation, virtual broker, pure traders and tick orchestration.
+- `stimpy/public_market_feed.py`, `shitzo_collector.py`: credential-free GET feed and explicitly enabled continuous collection loop.
 - `stimpy/evidence.py`, `reasoning.py`, `self_critic.py`: pure heuristic analysis.
 - `stimpy/incubation_service.py`: explicit persistent task creation, readiness, reactivation, comparison, cancellation and bounded failure handling.
 - `stimpy/pattern_learning.py`: explicit persisted comparable-case grouping, regime separation, contradiction counting and thresholded Pattern status.

@@ -8,8 +8,8 @@ def main():
     def request_stop(*_): stopped.set()
     signal.signal(signal.SIGINT,request_stop)
     if hasattr(signal,"SIGTERM"): signal.signal(signal.SIGTERM,request_stop)
-    app["worker"].start(); app["server"].start()
+    app["worker"].start(); app["server"].start(); app["shitzo_collector"].start()
     try: stopped.wait()
     finally:
-        app["server"].stop(); app["worker"].stop(); app["workflow"].repository.close(); app["shitzo_repository"].close(); app["store"].close()
+        app["shitzo_collector"].stop(); app["server"].stop(); app["worker"].stop(); app["workflow"].repository.close(); app["shitzo_repository"].close(); app["store"].close()
 if __name__=="__main__": main()

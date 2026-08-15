@@ -10,9 +10,9 @@ The PaperBroker handles LONG/SHORT virtual PnL, WAIT and Confidence gates, balan
 
 After the reviewed one-hour all-WAIT run, the operator explicitly approved half entry thresholds: Trend 0.0005 (0.05%), Momentum 0.0015 (0.15%) and Contrarian 0.0025 (0.25%). Strategy versions include `half-threshold` so later outcomes remain distinguishable from the original rules. Risk, minimum Confidence, Stop-Loss and Take-Profit are unchanged.
 
-`ShitzoLab` must be explicitly enabled and started locally. It creates virtual accounts, accepts validated ticks one at a time, updates open positions, freezes complete windows, asks each trader for a decision and passes eligible decisions to the virtual PaperBroker. It owns no thread, scheduler or network client. Stopping records the run state but preserves open positions.
+`ShitzoLab` must be explicitly enabled and started locally. It creates virtual accounts, accepts validated ticks one at a time, updates open positions, freezes complete windows, asks each trader for a decision and passes eligible decisions to the virtual PaperBroker. It owns no thread or network client. The separate `ShitzoCollector` can continuously call it through the credential-free Coinbase Exchange GET ticker when `SHITZO_ENABLED=true` and `SHITZO_AUTORUN=true`. Stopping records the run state but preserves open positions.
 
-GET-only status, trader, account, position, decision and trade projections are displayed as a compact read-only Controlcenter summary. There are no buttons or HTTP writes. No live provider, Evidence Bridge, Hypothesis Suggestion service or Stimpy-worker activation exists.
+GET-only status, trader, account, position, decision and trade projections are displayed as a compact read-only Controlcenter summary, including tick and feed-error counters. There are no buttons or HTTP writes. No Evidence Bridge, Hypothesis Suggestion service or real-order path exists.
 
 Security is structural: `MarketDataFeed` exposes only `source_name` and `read_latest`; a validator rejects write-capable objects. Tests inspect the package AST for trading calls and network/trading dependencies. `SHITZO_ENABLED=false` is the permanent default until a later separately reviewed activation. There is no profit guarantee and all future activity must remain virtual research.
 

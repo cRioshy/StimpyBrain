@@ -29,7 +29,9 @@
 - `KP-D4-002`: The dashboard has no authentication and must remain on loopback. It is an operator view, not a remotely exposed administration interface.
 - The current Pandorick training archive is LONG-only, short-lived and strongly concentrated in LOW volatility and STRONG_UP regimes. Its metrics are descriptive and cannot establish predictive performance or causality.
 - Decision/outcome records may contain repeated updates; E.1.2 deliberately keeps only the final closed outcome per decision.
-- `KP-SH-S1-001`: Shitzo has no selected public market-data provider yet. S.1 deliberately contains only the read-only protocol, so no live data is collected.
+- `KP-SH-COL-001`: The public ticker is a latest-price polling source, not a complete exchange trade stream. Network gaps are counted but missed ticks cannot be reconstructed automatically.
+- `KP-SH-COL-002`: Continuous collection has an in-process singleton only. A second independent Stimpy OS process is not yet prevented by a durable cross-process lock.
+- `KP-SH-COL-003`: Graceful shutdown preserves open virtual positions; a stopped run does not automatically resume those positions in a new run.
 - `KP-SH-S2-001`: The virtual PaperBroker intentionally models zero fees and zero slippage. These must become explicit reviewed parameters before comparing strategy performance.
 - `KP-SH-S2-002`: No feed provider or Evidence bridge exists yet; S.4 orchestration accepts only explicit local validated ticks.
 - `KP-SH-S3-001`: Trend, Momentum and Contrarian rules are transparent experiments, not calibrated strategies. Their thresholds and Confidence mapping have no demonstrated predictive value.

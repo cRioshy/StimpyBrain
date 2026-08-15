@@ -11,7 +11,7 @@ _STATIC_DIR=Path(__file__).with_name("static")
 CONTROL_ASSETS={"/controlcenter":("controlcenter.html","text/html; charset=utf-8"),"/controlcenter/":("controlcenter.html","text/html; charset=utf-8"),"/controlcenter/app.css":("controlcenter.css","text/css; charset=utf-8"),"/controlcenter/app.js":("controlcenter.js","text/javascript; charset=utf-8")}
 
 class ReadOnlyAPI:
-    def __init__(self,store,memory,learning,graph,worker=None,shitzo_lab=None,shitzo_repository=None): self.store,self.memory,self.learning,self.graph,self.worker,self.shitzo_lab,self.shitzo_repository=store,memory,learning,graph,worker,shitzo_lab,shitzo_repository
+    def __init__(self,store,memory,learning,graph,worker=None,shitzo_lab=None,shitzo_repository=None,shitzo_collector=None): self.store,self.memory,self.learning,self.graph,self.worker,self.shitzo_lab,self.shitzo_repository,self.shitzo_collector=store,memory,learning,graph,worker,shitzo_lab,shitzo_repository,shitzo_collector
     def health(self): return {"status":self.worker.status if self.worker else "STOPPED","database":"OK","read_only":True}
     def status(self): return self.worker.status_snapshot() if self.worker else {"status":"STOPPED","mode":"observe","read_only":True}
     def source_status(self): return self.worker.adapter.source_status() if self.worker else {"enabled":False,"available":None}
@@ -35,7 +35,10 @@ class ReadOnlyAPI:
     def replay_cases(self,run_id,limit=100,offset=0,split=None): return {"items":self.store.list_replay_cases(run_id,limit,offset,split),"limit":limit,"offset":offset} if self.store.get_replay_run(run_id) else None
     def training_runs(self,limit=100,offset=0): return {"items":self.store.list_pandorick_training_runs(limit,offset),"limit":limit,"offset":offset,"total":self.store.count("pandorick_training_runs")}
     def training_metrics(self,run_id,limit=100,offset=0,hypothesis_key=None,split=None): return {"items":self.store.list_pandorick_training_metrics(run_id,limit,offset,hypothesis_key,split),"limit":limit,"offset":offset} if self.store.get_pandorick_training_run(run_id) else None
-    def shitzo_status(self): return self.shitzo_lab.status() if self.shitzo_lab else {"enabled":False,"active":False,"automatic":False,"live_provider":False,"real_orders":False,"run":None}
+    def shitzo_status(self):
+        status=self.shitzo_lab.status() if self.shitzo_lab else {"enabled":False,"active":False,"automatic":False,"live_provider":False,"real_orders":False,"run":None}
+        if self.shitzo_collector: status.update(self.shitzo_collector.snapshot())
+        return status
     def shitzo_traders(self): return {"items":[{"trader_id":t.trader_id,"strategy_version":t.rules.strategy_version,"threshold":t.rules.threshold,"max_confidence":t.rules.max_confidence} for t in self.shitzo_lab.traders],"active":self.shitzo_lab.active} if self.shitzo_lab else {"items":[],"active":False}
     def _shitzo_list(self,kind,limit,offset,run_id=None,status=None):
         if not self.shitzo_repository: return {"items":[],"limit":limit,"offset":offset,"total":0}

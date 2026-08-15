@@ -1,5 +1,14 @@
 # Session handover
 
+## Continuous Shitzo paper collector — 2026-08-15
+
+- Added an explicitly enabled continuous paper-data collector for BTC-USD, ETH-USD and XRP-USD using Coinbase Exchange's public credential-free GET ticker.
+- `SHITZO_AUTORUN=false` remains the safe default. Continuous collection requires both `SHITZO_ENABLED=true` and `SHITZO_AUTORUN=true` at process start.
+- The collector loops until process shutdown, writes every valid tick/decision/position/trade to the existing SQLite schema, survives individual feed errors and records a local state snapshot.
+- The feed contract has no order capability; real orders, credentials, Pandorick writes and broker integrations remain absent. Graceful shutdown stops the run but preserves any open virtual positions.
+- The Controlcenter now displays current-run ticks and feed failures and labels the public automatic paper collector accurately.
+- Added lifecycle tests for enabled and disabled autorun. Exact operational activation is a local operator action, not a committed default.
+
 ## Shitzo half-threshold experiment — 2026-08-10
 
 - After a completed one-hour live-paper run produced 5,643 WAIT decisions and zero trades, the operator explicitly approved half strategy entry thresholds.
