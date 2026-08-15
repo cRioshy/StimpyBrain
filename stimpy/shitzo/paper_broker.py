@@ -13,10 +13,12 @@ class PaperBrokerRules:
     min_confidence: float=.55
     stop_distance_pct: float=.005
     take_profit_distance_pct: float=.010
+    max_holding_seconds: float=0.0
     def __post_init__(self):
         for name in ("risk_per_trade","min_confidence","stop_distance_pct","take_profit_distance_pct"):
             value=float(getattr(self,name))
             if not isfinite(value) or value<=0 or value>1: raise ValueError(f"invalid {name}")
+        if not isfinite(float(self.max_holding_seconds)) or self.max_holding_seconds<0: raise ValueError("invalid max_holding_seconds")
 
 
 class PaperBroker:
@@ -46,6 +48,7 @@ class PaperBroker:
             if price>=position.stop_loss: reason=ExitReason.STOP_LOSS
             elif price<=position.take_profit: reason=ExitReason.TAKE_PROFIT
             pnl=(position.entry_price-price)*position.quantity
+        if reason is None and self.rules.max_holding_seconds and (timestamp-position.opened_at).total_seconds()>=self.rules.max_holding_seconds: reason=ExitReason.TIME_LIMIT
         if reason is None: return None
         result=ResultType.WIN if pnl>0 else ResultType.LOSS if pnl<0 else ResultType.NEUTRAL
         context={"entry_price":position.entry_price,"stop_loss":position.stop_loss,"take_profit":position.take_profit,"decision_id":position.decision_id}

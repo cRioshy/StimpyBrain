@@ -33,6 +33,7 @@
 - `KP-SH-COL-002`: Continuous collection has an in-process singleton only. A second independent Stimpy OS process is not yet prevented by a durable cross-process lock.
 - `KP-SH-COL-003`: Graceful shutdown preserves open virtual positions; a stopped run does not automatically resume those positions in a new run.
 - `KP-SH-S2-001`: The virtual PaperBroker intentionally models zero fees and zero slippage. These must become explicit reviewed parameters before comparing strategy performance.
+- `KP-SH-SCALP-001`: The short-horizon profile may record tiny gross wins that would become neutral or negative after real fees and slippage; current results are research-only.
 - `KP-SH-S2-002`: No feed provider or Evidence bridge exists yet; S.4 orchestration accepts only explicit local validated ticks.
 - `KP-SH-S3-001`: Trend, Momentum and Contrarian rules are transparent experiments, not calibrated strategies. Their thresholds and Confidence mapping have no demonstrated predictive value.
 - `KP-SH-S4-001`: Shitzo GET lists are bounded to 100 rows in the current Controlcenter and have no pagination controls. The local API remains unauthenticated and loopback-only.

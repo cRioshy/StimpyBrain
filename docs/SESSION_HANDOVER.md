@@ -1,5 +1,13 @@
 # Session handover
 
+## Short-horizon scalping paper profile — 2026-08-15
+
+- Operator requested more completed experiments from minimal market movement instead of long-held positions.
+- Runtime profile uses TP 0.0020, SL 0.0015 and a 1,200-second maximum holding time; entry thresholds remain the aggressive profile and virtual risk remains 0.001.
+- Added auditable `TIME_LIMIT` exit handling. At 20 minutes the current ticker closes the paper position and records WIN/LOSS/NEUTRAL from its actual virtual PnL.
+- Seven positions from the previous aggressive run were closed at public market prices before switching: 3 WIN, 3 LOSS, 1 NEUTRAL, combined +4.125948 virtual USD.
+- Zero fees/slippage remains a known limitation, so very small gross paper profits must not be treated as executable net profits.
+
 ## Aggressive paper research profile — 2026-08-15
 
 - Operator approved more frequent virtual entries and explicitly accepts losses as research cases.

@@ -49,6 +49,7 @@ class ExitReason(StrEnum):
     MANUAL_TEST_CLOSE = "MANUAL_TEST_CLOSE"
     SESSION_SHUTDOWN = "SESSION_SHUTDOWN"
     INVALID_DATA = "INVALID_DATA"
+    TIME_LIMIT = "TIME_LIMIT"
 
 
 class ResultType(StrEnum):

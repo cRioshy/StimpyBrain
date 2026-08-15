@@ -56,6 +56,7 @@ class StimpyConfig:
     shitzo_contrarian_threshold: float=.0025
     shitzo_autorun: bool=False
     shitzo_poll_interval_seconds: float=5.0
+    shitzo_max_holding_seconds: float=0.0
     pandorick_endpoints: tuple[str,...]=(
         "/api/v1/health","/api/v1/system/status","/api/v1/brain/status",
         "/api/v1/decisions/recent?limit=100","/api/v1/statistics","/api/v1/warnings")
@@ -77,7 +78,7 @@ class StimpyConfig:
             max(1.0,_float("SHITZO_STARTING_BALANCE_USD",10000)),max(.0001,min(_float("SHITZO_RISK_PER_TRADE",.005),.05)),max(.01,min(_float("SHITZO_MIN_CONFIDENCE",.55),1.0)),
             max(.0001,min(_float("SHITZO_STOP_DISTANCE_PCT",.005),.25)),max(.0001,min(_float("SHITZO_TAKE_PROFIT_DISTANCE_PCT",.010),.50)),
             max(.00001,min(_float("SHITZO_TREND_THRESHOLD",.0005),.25)),max(.00001,min(_float("SHITZO_MOMENTUM_THRESHOLD",.0015),.25)),max(.00001,min(_float("SHITZO_CONTRARIAN_THRESHOLD",.0025),.25)),
-            _bool("SHITZO_AUTORUN",False),max(1.0,min(_float("SHITZO_POLL_INTERVAL_SECONDS",5),3600.0)))
+            _bool("SHITZO_AUTORUN",False),max(1.0,min(_float("SHITZO_POLL_INTERVAL_SECONDS",5),3600.0)),max(0.0,min(_float("SHITZO_MAX_HOLDING_SECONDS",0),604800.0)))
     def validate(self):
         if self.mode!="observe" or not self.read_only: raise ValueError("StimpyBrain is permanently observe/read-only")
         if not self.pandorick_base_url.startswith(("http://127.0.0.1","http://localhost")): raise ValueError("Pandorick URL must be local")

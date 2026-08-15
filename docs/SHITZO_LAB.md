@@ -4,7 +4,7 @@ Shitzo is an isolated, disabled-by-default paper-trading research laboratory ins
 
 Supported Phase-1 symbols are `BTC-USD`, `ETH-USD` and `XRP-USD`. A tick requires a finite positive price, UTC-normalized aware timestamp, source and unique source event identity. The Price Window rejects non-chronological data, deduplicates events, requires a complete long window and freezes source identities, time bounds, moving averages, momentum and volatility in a stable content-derived snapshot.
 
-The PaperBroker handles LONG/SHORT virtual PnL, WAIT and Confidence gates, balance-capped sizing, Stop-Loss, Take-Profit, manual test closure and one open position per trader/symbol. Position closure, immutable trade creation and account statistics update occur in one transaction. Open positions survive restart. Schema v13 persists the account high-water mark for drawdown.
+The PaperBroker handles LONG/SHORT virtual PnL, WAIT and Confidence gates, balance-capped sizing, Stop-Loss, Take-Profit, optional maximum holding time, manual test closure and one open position per trader/symbol. A time-limited close records the actual current virtual PnL as WIN/LOSS/NEUTRAL. Position closure, immutable trade creation and account statistics update occur in one transaction. Open positions survive restart. Schema v13 persists the account high-water mark for drawdown.
 
 `shitzo-trend` compares short and long moving averages. `shitzo-momentum` evaluates frozen window momentum. `shitzo-contrarian` compares price with the long mean and deliberately takes the opposite direction beyond its threshold. Each emits LONG, SHORT or WAIT with a transparent reason, stable identity and Confidence capped at 0.75. These are experiments, not profitable-strategy claims.
 

@@ -34,6 +34,10 @@ class PaperBrokerTests(unittest.TestCase):
     def test_restart_preserves_open_position_and_account(self):
         s=self.snapshot(); position=self.broker.consider("run-1",self.decision(s),s); self.repo.close(); self.repo=ShitzoRepository(self.db); self.broker=PaperBroker(self.repo)
         restored=self.repo.get_open_position("run-1","trend","BTC-USD"); self.assertEqual(position,restored); self.assertEqual(10_000,self.repo.get_account("run-1","trend").balance)
+    def test_time_limit_closes_small_move_as_research_outcome(self):
+        broker=PaperBroker(self.repo,PaperBrokerRules(max_holding_seconds=1200)); s=self.snapshot(); position=broker.consider("run-1",self.decision(s),s)
+        self.assertIsNone(broker.update_price(position,100.05,self.now+timedelta(minutes=19)))
+        trade=broker.update_price(position,100.05,self.now+timedelta(minutes=20)); self.assertEqual("TIME_LIMIT",trade["exit_reason"]); self.assertEqual("WIN",trade["result_type"])
     def test_repository_has_foreign_keys_and_broker_has_no_network_client(self):
         self.assertEqual(1,self.repo._db.execute("PRAGMA foreign_keys").fetchone()[0]); self.assertEqual([],self.repo._db.execute("PRAGMA foreign_key_check").fetchall())
         self.assertFalse(hasattr(self.broker,"client")); self.assertFalse(hasattr(self.broker,"exchange"))
