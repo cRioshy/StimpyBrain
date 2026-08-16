@@ -44,3 +44,5 @@
 - `KP-SH-S3-001`: Trend, Momentum and Contrarian rules are transparent experiments, not calibrated strategies. Their thresholds and Confidence mapping have no demonstrated predictive value.
 - `KP-SH-S4-001`: Shitzo GET lists are bounded to 100 rows in the current Controlcenter and have no pagination controls. The local API remains unauthenticated and loopback-only.
 - `KP-SH-EXP-001`: Halving the three entry thresholds intentionally increases noise, false entries and losses. This is approved only for virtual research and is not evidence that the strategies improved.
+- `KP-SH-REG-001`: Regime thresholds are transparent fixed research defaults, not statistically calibrated boundaries.
+- `KP-SH-REG-002`: Regime performance is descriptive and small groups are marked insufficient below five closed trades; it must not change strategy parameters automatically.

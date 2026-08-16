@@ -1,6 +1,6 @@
 # Current system state
 
-SQLite schema v15 adds disabled-by-default Social Memory Lite: public RSS and official Reddit API observation, transparent rule classification, restart-safe reaction jobs, historical matches and bounded read-only Controlcenter/API projections. The active composition does not use X/Twitter and is isolated from Shitzo and Pandorick.
+SQLite schema v16 adds deterministic Shitzo market-regime labels and descriptive GET-only regime analysis. Social Memory Lite remains disabled by default and isolated from Shitzo and Pandorick.
 
 Date: 2026-08-15. StimpyBrain is a standalone Python service. Composition occurs in `stimpy/app.py`; importing it starts nothing. `python -m stimpy` starts a local GET-only API, one controlled worker and the Shitzo collector only when explicitly enabled. The Pandorick poller and Shitzo autorun are disabled by default.
 
@@ -8,7 +8,7 @@ Date: 2026-08-15. StimpyBrain is a standalone Python service. Composition occurs
 
 Verified Pandorick Rick API GET envelopes flow through `ReadOnlyHttpClient -> ObservationAdapter -> ObservationNormalizer -> ObservationStore`. The store appends sanitized raw records to rotating JSONL and maintains a synchronized SQLite index. New records feed evidence-counted Memory, descriptive Learning and the internal observe-only Workflow Gate. The architecture Knowledge Graph and local HTTP API expose bounded projections.
 
-SQLite schema v13 supports Shitzo's validated records, frozen windows, deterministic traders, virtual PaperBroker and GET-only projections. An optional continuous collector uses a public credential-free GET ticker and is activated only by two explicit environment flags.
+SQLite schema v16 supports Shitzo's validated records, frozen windows, deterministic traders, virtual PaperBroker, entry-time market regimes and GET-only projections. The classifier changes no strategy or threshold.
 
 Active only when started: Stimpy worker and local API. Pandorick polling additionally requires `STIMPY_PANDORICK_ENABLED=true`. Continuous Shitzo collection requires `SHITZO_ENABLED=true` and `SHITZO_AUTORUN=true`; both are false by default. Its virtual broker has no real execution path.
 
@@ -22,7 +22,7 @@ Active only when started: Stimpy worker and local API. Pandorick polling additio
 - `stimpy/observation_store.py`: rotating JSONL and SQLite schema v10.
 - `stimpy/offline_replay.py`: explicit chronological OHLCV CSV replay with stable runs and split-safe cases.
 - `stimpy/pandorick_training.py`: explicit, filtered decision/outcome ZIP analysis for five descriptive hypothesis families.
-- `stimpy/shitzo/`: paper-research foundation, virtual broker, pure traders and tick orchestration.
+- `stimpy/shitzo/`: paper-research foundation, virtual broker, pure traders, tick orchestration and look-ahead-free regime analysis.
 - `stimpy/public_market_feed.py`, `shitzo_collector.py`: credential-free GET feed and explicitly enabled continuous collection loop.
 - `stimpy/social/lite_worker.py`, `stimpy/social/adapters/`: RSS/Reddit observation and restart-safe T0/+5m/+30m/+2h/+24h reaction processing.
 - `stimpy/evidence.py`, `reasoning.py`, `self_critic.py`: pure heuristic analysis.
@@ -47,7 +47,7 @@ Phase D.1 stores research questions as Hypotheses, never as facts. D.2 adds immu
 
 ## Storage and commands
 
-`stimpy_data/{observations,memory,state,database,logs}` is local and Git-ignored. SQLite foreign keys are enabled and the latest Stimpy schema migration is version 15. Tests: `python -m compileall -q stimpy tests`; `python -m unittest discover -s tests -v`.
+`stimpy_data/{observations,memory,state,database,logs}` is local and Git-ignored. SQLite foreign keys are enabled and the latest Stimpy schema migration is version 16. Tests: `python -m compileall -q stimpy tests`; `python -m unittest discover -s tests -v`.
 
 ## Risks
 

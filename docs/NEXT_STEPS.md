@@ -7,6 +7,7 @@ Completed: research foundations through E.1.2, Shitzo orchestration and an expli
 Next safe steps:
 
 1. Monitor continuous collector gaps, SQLite growth and restart behavior before expanding symbols or feeds.
+2. Collect enough closed trades per asset/strategy/regime to move groups beyond `INSUFFICIENT_CASES`, then review the fixed regime thresholds offline without automatic tuning.
 2. Add a durable cross-process lock and an explicit policy for open positions across restarts.
 3. Design S.5 Evidence Bridge as a deduplicated reviewed research-case boundary, never direct promotion.
 3. Add explicit fee/slippage parameters before performance comparison, retaining zero defaults for compatibility.
