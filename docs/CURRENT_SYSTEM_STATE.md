@@ -36,6 +36,7 @@ Active only when started: Stimpy worker and local API. Pandorick polling additio
 - `stimpy/worker.py`: single in-process instance, atomic state and bounded shutdown.
 - `stimpy/api.py`: bounded GET projections including read-only Shitzo status/accounts/positions/decisions/trades; all write methods return 405.
 - `stimpy/static/controlcenter.*`: dependency-free responsive read-only dashboard for live paper activity and Hypothesis research, served locally by the existing API server.
+- Controlcenter polling patches stable DOM rows instead of rebuilding whole panels, preserves window/table/filter/detail state, and offers local-only `LIVE FOLLOW` with a five-second manual-scroll cooldown.
 
 ## Workflow, learning and history
 

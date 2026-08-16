@@ -1,5 +1,11 @@
 # Session handover
 
+## Stable Controlcenter live refresh — 2026-08-16
+
+- Replaced destructive 15-second panel rebuilding with stable keyed DOM reconciliation while retaining the existing GET APIs and polling interval.
+- Added local-only `LIVE FOLLOW`, default off, with important-event gating and a five-second manual-scroll cooldown. Reconnects retain visible data and user state.
+- UI-only change: no Shitzo, PaperBroker, strategy, TP/SL, Social Memory, Hypothesis, SQLite, API, Pandorick, Telegram or order logic changed.
+
 ## Shitzo market-regime analysis — 2026-08-16
 
 - Branch `agent/shitzo-market-regimes` adds deterministic entry-time trend/volatility classification without changing traders, entry thresholds, TP, SL, sizing or exits.
