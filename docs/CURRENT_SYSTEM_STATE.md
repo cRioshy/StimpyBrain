@@ -8,7 +8,7 @@ Date: 2026-08-15. StimpyBrain is a standalone Python service. Composition occurs
 
 Verified Pandorick Rick API GET envelopes flow through `ReadOnlyHttpClient -> ObservationAdapter -> ObservationNormalizer -> ObservationStore`. The store appends sanitized raw records to rotating JSONL and maintains a synchronized SQLite index. New records feed evidence-counted Memory, descriptive Learning and the internal observe-only Workflow Gate. The architecture Knowledge Graph and local HTTP API expose bounded projections.
 
-SQLite schema v16 supports Shitzo's validated records, frozen windows, deterministic traders, virtual PaperBroker, entry-time market regimes and GET-only projections. The classifier changes no strategy or threshold.
+SQLite schema v16 supports Shitzo's validated records, frozen windows, deterministic traders, virtual PaperBroker, entry-time market regimes and GET-only projections for BTC, ETH, XRP, SOL, ADA and DOGE USD products. The classifier changes no strategy or threshold.
 
 Active only when started: Stimpy worker and local API. Pandorick polling additionally requires `STIMPY_PANDORICK_ENABLED=true`. Continuous Shitzo collection requires `SHITZO_ENABLED=true` and `SHITZO_AUTORUN=true`; both are false by default. Its virtual broker has no real execution path.
 

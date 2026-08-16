@@ -1,5 +1,11 @@
 # Session handover
 
+## Shitzo crypto asset extension — 2026-08-16
+
+- Added SOL-USD, ADA-USD and DOGE-USD to the validated Shitzo allowlist and default future-run symbol set after live read-only Coinbase ticker verification.
+- The already running BTC/ETH/XRP run was not restarted or mutated. New assets begin only in a separately started future run.
+- No Social Memory, Pandorick training, strategy, threshold, TP/SL, PaperBroker, database schema, API, Telegram, broker or real-order change.
+
 ## Stable Controlcenter live refresh — 2026-08-16
 
 - Replaced destructive 15-second panel rebuilding with stable keyed DOM reconciliation while retaining the existing GET APIs and polling interval.

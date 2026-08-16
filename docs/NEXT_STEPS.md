@@ -7,6 +7,7 @@ Completed: research foundations through E.1.2, Shitzo orchestration and an expli
 Next safe steps:
 
 1. Monitor continuous collector gaps, SQLite growth and restart behavior before expanding symbols or feeds.
+1. Start the six-symbol set only as a new run, then compare per-symbol feed failures and snapshot cadence against the preserved BTC/ETH/XRP baseline.
 2. Collect enough closed trades per asset/strategy/regime to move groups beyond `INSUFFICIENT_CASES`, then review the fixed regime thresholds offline without automatic tuning.
 3. Observe long-running Controlcenter sessions and add pagination only if the existing bounded 100/200-row DOM limits become operationally restrictive.
 2. Add a durable cross-process lock and an explicit policy for open positions across restarts.
