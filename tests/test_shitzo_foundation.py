@@ -29,7 +29,9 @@ class ShitzoFoundationTests(unittest.TestCase):
     def test_models_reject_invalid_numbers_symbols_and_confidence(self):
         for value in (0, -1, math.nan, math.inf):
             with self.assertRaises(ValueError): MarketTick("BTC-USD", value, datetime.now(UTC), "source", "event")
-        with self.assertRaises(ValueError): MarketTick("DOGE-USD", 1, datetime.now(UTC), "source", "event")
+        for symbol in ("BTC-USD","ETH-USD","XRP-USD","SOL-USD","ADA-USD","DOGE-USD"):
+            self.assertEqual(symbol,MarketTick(symbol,1,datetime.now(UTC),"source",f"event-{symbol}").symbol)
+        with self.assertRaises(ValueError): MarketTick("SHIB-USD", 1, datetime.now(UTC), "source", "event")
         with self.assertRaises(ValueError):
             TraderDecision("d", "t", "BTC-USD", Direction.WAIT, 1.1, "reason", datetime.now(UTC), "s", "v1")
 
@@ -51,7 +53,7 @@ class ShitzoFoundationTests(unittest.TestCase):
         with self.assertRaises(TypeError): validate_read_only_feed(WriteCapableFeed())
 
     def test_disabled_config_and_schema_v12_are_restart_safe(self):
-        self.assertFalse(StimpyConfig.from_env().shitzo_enabled)
+        config=StimpyConfig.from_env();self.assertFalse(config.shitzo_enabled);self.assertEqual(("BTC-USD","ETH-USD","XRP-USD","SOL-USD","ADA-USD","DOGE-USD"),config.shitzo_symbols);config.validate()
         with tempfile.TemporaryDirectory() as tmp:
             db = Path(tmp) / "database" / "stimpy.sqlite3"
             store = ObservationStore(db, Path(tmp))

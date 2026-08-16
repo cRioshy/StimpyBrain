@@ -2,7 +2,7 @@
 
 Shitzo is an isolated, disabled-by-default paper-trading research laboratory inside StimpyBrain. It can never authorize or place real orders. Phase S.4 adds explicit bounded tick orchestration and GET-only projections to the virtual broker and deterministic traders.
 
-Supported Phase-1 symbols are `BTC-USD`, `ETH-USD` and `XRP-USD`. A tick requires a finite positive price, UTC-normalized aware timestamp, source and unique source event identity. The Price Window rejects non-chronological data, deduplicates events, requires a complete long window and freezes source identities, time bounds, moving averages, momentum and volatility in a stable content-derived snapshot.
+Supported Shitzo symbols are `BTC-USD`, `ETH-USD`, `XRP-USD`, `SOL-USD`, `ADA-USD` and `DOGE-USD`. A tick requires a finite positive price, UTC-normalized aware timestamp, source and unique source event identity. The Price Window rejects non-chronological data, deduplicates events, requires a complete long window and freezes source identities, time bounds, moving averages, momentum and volatility in a stable content-derived snapshot.
 
 The PaperBroker handles LONG/SHORT virtual PnL, WAIT and Confidence gates, balance-capped sizing, Stop-Loss, Take-Profit, optional maximum holding time, manual test closure and one open position per trader/symbol. A time-limited close records the actual current virtual PnL as WIN/LOSS/NEUTRAL. Position closure, immutable trade creation and account statistics update occur in one transaction. Open positions survive restart. Schema v13 persists the account high-water mark for drawdown.
 

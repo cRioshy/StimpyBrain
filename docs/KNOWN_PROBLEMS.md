@@ -36,6 +36,7 @@
 - The current Pandorick training archive is LONG-only, short-lived and strongly concentrated in LOW volatility and STRONG_UP regimes. Its metrics are descriptive and cannot establish predictive performance or causality.
 - Decision/outcome records may contain repeated updates; E.1.2 deliberately keeps only the final closed outcome per decision.
 - `KP-SH-COL-001`: The public ticker is a latest-price polling source, not a complete exchange trade stream. Network gaps are counted but missed ticks cannot be reconstructed automatically.
+- `KP-SH-COL-004`: Six sequential public ticker requests increase each polling cycle's network exposure; per-symbol failures remain visible and missed ticks are not reconstructed.
 - `KP-SH-COL-002`: Continuous collection has an in-process singleton only. A second independent Stimpy OS process is not yet prevented by a durable cross-process lock.
 - `KP-SH-COL-003`: Graceful shutdown preserves open virtual positions; a stopped run does not automatically resume those positions in a new run.
 - `KP-SH-S2-001`: The virtual PaperBroker intentionally models zero fees and zero slippage. These must become explicit reviewed parameters before comparing strategy performance.

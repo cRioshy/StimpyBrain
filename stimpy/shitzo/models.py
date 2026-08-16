@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from math import isfinite
 
-SUPPORTED_SYMBOLS = frozenset({"BTC-USD", "ETH-USD", "XRP-USD"})
+SUPPORTED_SYMBOLS = frozenset({"BTC-USD", "ETH-USD", "XRP-USD", "SOL-USD", "ADA-USD", "DOGE-USD"})
 
 
 def _timestamp(value: datetime) -> datetime:
