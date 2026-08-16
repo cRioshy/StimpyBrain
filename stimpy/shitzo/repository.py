@@ -42,6 +42,55 @@ class ShitzoRepository:
         with self._lock,self._db:
             self._db.execute("INSERT OR IGNORE INTO shitzo_feature_snapshots VALUES(?,?,?,?,?,?,?,?,?)",(snapshot.snapshot_id,run_id,snapshot.symbol,snapshot.timestamp.isoformat(),snapshot.window_started_at.isoformat(),snapshot.window_ended_at.isoformat(),json.dumps(features,sort_keys=True),json.dumps(snapshot.source_data_ids),snapshot.schema_version))
             self._db.execute("INSERT OR IGNORE INTO shitzo_decisions VALUES(?,?,?,?,?,?,?,?,?,?,?)",(decision.decision_id,run_id,decision.trader_id,decision.symbol,decision.direction.value,decision.confidence,decision.reason,decision.timestamp.isoformat(),decision.feature_snapshot_id,decision.strategy_version,decision.schema_version))
+    def save_snapshot(self,run_id,snapshot:FeatureSnapshot):
+        features={"price":snapshot.price,"short_ma":snapshot.short_ma,"long_ma":snapshot.long_ma,"momentum":snapshot.momentum,"volatility":snapshot.volatility,"sample_count":snapshot.sample_count,"source":snapshot.source,"available_timeframes":snapshot.available_timeframes,"market_regime":snapshot.market_regime,"data_quality":snapshot.data_quality}
+        with self._lock,self._db:self._db.execute("INSERT OR IGNORE INTO shitzo_feature_snapshots VALUES(?,?,?,?,?,?,?,?,?)",(snapshot.snapshot_id,run_id,snapshot.symbol,snapshot.timestamp.isoformat(),snapshot.window_started_at.isoformat(),snapshot.window_ended_at.isoformat(),json.dumps(features,sort_keys=True),json.dumps(snapshot.source_data_ids),snapshot.schema_version))
+    def save_regime_label(self,label):
+        with self._lock,self._db:
+            cur=self._db.execute("INSERT OR IGNORE INTO shitzo_regime_labels VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",(label.label_id,label.snapshot_id,label.run_id,label.symbol,label.trend_regime,label.volatility_regime,label.combined_regime,label.classifier_version,json.dumps(label.reasons),label.classified_at.isoformat(),label.source_type,label.schema_version))
+        return cur.rowcount
+    def save_regime_labels(self,labels):
+        rows=[(label.label_id,label.snapshot_id,label.run_id,label.symbol,label.trend_regime,label.volatility_regime,label.combined_regime,label.classifier_version,json.dumps(label.reasons),label.classified_at.isoformat(),label.source_type,label.schema_version) for label in labels]
+        if not rows:return 0
+        with self._lock,self._db:
+            before=self._db.total_changes
+            self._db.executemany("INSERT OR IGNORE INTO shitzo_regime_labels VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",rows)
+            return self._db.total_changes-before
+    def unlabeled_snapshots(self,limit=None):
+        sql="SELECT s.* FROM shitzo_feature_snapshots s LEFT JOIN shitzo_regime_labels r ON r.snapshot_id=s.snapshot_id WHERE r.snapshot_id IS NULL ORDER BY s.snapshot_at";params=()
+        if limit is not None:sql+=" LIMIT ?";params=(max(1,int(limit)),)
+        return [self._row(r) for r in self._db.execute(sql,params).fetchall()]
+    def list_regimes(self,limit=100,offset=0,run_id=None,symbol=None,combined_regime=None):
+        clauses=[];params=[]
+        for column,value in (("r.run_id",run_id),("r.symbol",symbol),("r.combined_regime",combined_regime)):
+            if value:clauses.append(column+"=?");params.append(value)
+        sql="SELECT r.*,s.snapshot_at FROM shitzo_regime_labels r JOIN shitzo_feature_snapshots s ON s.snapshot_id=r.snapshot_id"+(" WHERE "+" AND ".join(clauses) if clauses else "")+" ORDER BY s.snapshot_at DESC LIMIT ? OFFSET ?";params.extend((max(1,min(int(limit),100)),max(0,int(offset))))
+        return [self._row(r) for r in self._db.execute(sql,params).fetchall()]
+    def current_regimes(self,run_id=None):
+        clause="WHERE r.run_id=?" if run_id else "";params=(run_id,) if run_id else ()
+        sql=f"SELECT * FROM (SELECT r.*,s.snapshot_at,ROW_NUMBER() OVER(PARTITION BY r.symbol ORDER BY s.snapshot_at DESC) rank FROM shitzo_regime_labels r JOIN shitzo_feature_snapshots s ON s.snapshot_id=r.snapshot_id {clause}) WHERE rank=1 ORDER BY symbol"
+        return [self._row(r) for r in self._db.execute(sql,params).fetchall()]
+    def regime_distribution(self,run_id=None):
+        clause=" WHERE run_id=?" if run_id else "";params=(run_id,) if run_id else ()
+        return [dict(r) for r in self._db.execute("SELECT combined_regime,COUNT(*) count FROM shitzo_regime_labels"+clause+" GROUP BY combined_regime ORDER BY count DESC",params).fetchall()]
+    def _regime_trade_rows(self,run_id=None,trader_id=None,symbol=None,losses_only=False):
+        clauses=[];params=[]
+        for column,value in (("t.run_id",run_id),("p.trader_id",trader_id),("p.symbol",symbol)):
+            if value:clauses.append(column+"=?");params.append(value)
+        if losses_only:clauses.append("t.result_type='LOSS'")
+        sql="""SELECT t.*,p.trader_id,p.symbol,p.side,p.entry_price,p.opened_at,d.confidence,d.reason decision_reason,d.strategy_version,r.trend_regime,r.volatility_regime,r.combined_regime,a.max_drawdown FROM shitzo_trades t JOIN shitzo_positions p ON p.position_id=t.position_id JOIN shitzo_decisions d ON d.decision_id=p.decision_id LEFT JOIN shitzo_regime_labels r ON r.snapshot_id=d.feature_snapshot_id LEFT JOIN shitzo_accounts a ON a.run_id=t.run_id AND a.trader_id=p.trader_id"""+(" WHERE "+" AND ".join(clauses) if clauses else "")+" ORDER BY t.closed_at DESC"
+        return [self._row(r) for r in self._db.execute(sql,params).fetchall()]
+    def regime_performance(self,run_id=None,trader_id=None,symbol=None,min_cases=5):
+        from collections import defaultdict
+        groups=defaultdict(list)
+        for row in self._regime_trade_rows(run_id,trader_id,symbol):groups[(row["trader_id"],row["symbol"],row.get("combined_regime") or "UNCLASSIFIED")].append(row)
+        items=[]
+        for (trader,asset,regime),rows in sorted(groups.items()):
+            wins=[x["pnl_usd"] for x in rows if x["pnl_usd"]>0];losses=[x["pnl_usd"] for x in rows if x["pnl_usd"]<0];durations=[(datetime.fromisoformat(x["closed_at"])-datetime.fromisoformat(x["opened_at"])).total_seconds() for x in rows];gross_profit=sum(wins);gross_loss=abs(sum(losses))
+            items.append({"trader_id":trader,"symbol":asset,"combined_regime":regime,"trades":len(rows),"wins":len(wins),"losses":len(losses),"neutral":len(rows)-len(wins)-len(losses),"win_rate":len(wins)/len(rows),"error_rate":len(losses)/len(rows),"average_gain":sum(wins)/len(wins) if wins else None,"average_loss":sum(losses)/len(losses) if losses else None,"total_pnl":sum(x["pnl_usd"] for x in rows),"profit_factor":gross_profit/gross_loss if gross_loss else None,"average_holding_seconds":sum(durations)/len(durations),"max_drawdown":max((x.get("max_drawdown") or 0 for x in rows),default=0),"case_status":"SUFFICIENT" if len(rows)>=min_cases else "INSUFFICIENT_CASES"})
+        return items
+    def regime_losses(self,limit=100,offset=0,run_id=None,trader_id=None,symbol=None):
+        rows=self._regime_trade_rows(run_id,trader_id,symbol,True);return rows[max(0,int(offset)):max(0,int(offset))+max(1,min(int(limit),100))]
     def open_position(self,position:PaperPosition):
         with self._lock,self._db:
             existing=self._db.execute("SELECT position_id FROM shitzo_positions WHERE run_id=? AND trader_id=? AND symbol=? AND status='OPEN'",(position.run_id,position.trader_id,position.symbol)).fetchone()
@@ -104,6 +153,7 @@ class ShitzoRepository:
         result=dict(row)
         for key in ("configuration","features","source_data_ids","frozen_context"):
             if key in result and result[key] is not None: result[key]=json.loads(result[key])
+        if "reasons" in result and result["reasons"] is not None: result["reasons"]=json.loads(result["reasons"])
         result.pop("peak_balance",None)
         return result
     @staticmethod

@@ -161,6 +161,15 @@ CREATE INDEX IF NOT EXISTS ix_shitzo_market_events_run_symbol_time ON shitzo_mar
 CREATE INDEX IF NOT EXISTS ix_shitzo_positions_run_status ON shitzo_positions(run_id,status,trader_id,symbol);
 CREATE INDEX IF NOT EXISTS ix_shitzo_trades_run_time ON shitzo_trades(run_id,closed_at DESC);
 """
+SHITZO_REGIME_SCHEMA="""
+CREATE TABLE IF NOT EXISTS shitzo_regime_labels(
+ label_id TEXT PRIMARY KEY,snapshot_id TEXT NOT NULL,run_id TEXT NOT NULL,symbol TEXT NOT NULL,
+ trend_regime TEXT NOT NULL,volatility_regime TEXT NOT NULL,combined_regime TEXT NOT NULL,
+ classifier_version TEXT NOT NULL,reasons TEXT NOT NULL,classified_at TEXT NOT NULL,
+ source_type TEXT NOT NULL CHECK(source_type IN ('LIVE','HISTORICAL_BACKFILL')),schema_version INTEGER NOT NULL,
+ UNIQUE(snapshot_id,classifier_version),FOREIGN KEY(snapshot_id) REFERENCES shitzo_feature_snapshots(snapshot_id),FOREIGN KEY(run_id) REFERENCES shitzo_lab_runs(run_id));
+CREATE INDEX IF NOT EXISTS ix_shitzo_regime_run_symbol ON shitzo_regime_labels(run_id,symbol,combined_regime);
+"""
 class ObservationStore:
     def __init__(self,database_path,data_dir=None,rotation_bytes=134217728):
         self.path=Path(database_path); self.data_dir=Path(data_dir or self.path.parents[1]); self.observations_dir=self.data_dir/"observations"
@@ -208,6 +217,8 @@ class ObservationStore:
             if "peak_balance" not in account_columns: self._db.execute("ALTER TABLE shitzo_accounts ADD COLUMN peak_balance REAL NOT NULL DEFAULT 0")
             self._db.execute("UPDATE shitzo_accounts SET peak_balance=MAX(starting_balance,balance) WHERE peak_balance=0")
             self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(13,datetime.now(UTC).isoformat()))
+            self._db.executescript(SHITZO_REGIME_SCHEMA)
+            self._db.execute("INSERT OR IGNORE INTO stimpy_schema_migrations VALUES(?,?)",(16,datetime.now(UTC).isoformat()))
             self._db.execute("PRAGMA optimize")
     @property
     def foreign_keys_enabled(self): return bool(self._db.execute("PRAGMA foreign_keys").fetchone()[0])

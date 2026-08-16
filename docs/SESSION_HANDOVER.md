@@ -1,5 +1,11 @@
 # Session handover
 
+## Shitzo market-regime analysis — 2026-08-16
+
+- Branch `agent/shitzo-market-regimes` adds deterministic entry-time trend/volatility classification without changing traders, entry thresholds, TP, SL, sizing or exits.
+- Schema v16 stores versioned labels separately and supports idempotent historical backfill. GET-only API and Controlcenter show current regimes, distribution, strategy/regime results and loss reasons.
+- The classifier reads only frozen snapshot fields, so future price data cannot leak into an entry label. Results remain virtual and descriptive; no broker, real order, Pandorick, Telegram or Social Memory connection was added.
+
 ## Social Memory Lite — 2026-08-15
 
 - Replaced the default Social composition with disabled-by-default RSS/Reddit observation for BTC, ETH and XRP; X/Twitter is explicitly absent from the active worker.
