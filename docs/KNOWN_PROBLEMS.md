@@ -46,3 +46,4 @@
 - `KP-SH-EXP-001`: Halving the three entry thresholds intentionally increases noise, false entries and losses. This is approved only for virtual research and is not evidence that the strategies improved.
 - `KP-SH-REG-001`: Regime thresholds are transparent fixed research defaults, not statistically calibrated boundaries.
 - `KP-SH-REG-002`: Regime performance is descriptive and small groups are marked insufficient below five closed trades; it must not change strategy parameters automatically.
+- `KP-UI-REFRESH-001`: LIVE FOLLOW is intentionally browser-local. Clearing browser site data resets it to the safe default `AUS`.
