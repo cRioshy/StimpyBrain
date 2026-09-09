@@ -28,6 +28,7 @@ Active only when started: Stimpy worker and local API. Pandorick polling additio
 - `stimpy/demo_reasoning_prototype.py`: temporary, simulated local demo.
 - `stimpy/worker.py`: single in-process instance, atomic state and bounded shutdown.
 - `stimpy/api.py`: bounded static and dynamic GET projections, including Hypothesis Reasoning, Critic and incubation; all write methods return 405.
+- `stimpy/static/controlcenter.*`: dependency-free responsive read-only Hypothesis dashboard, served locally by the existing API server.
 
 ## Workflow, learning and history
 
@@ -35,7 +36,7 @@ Workflow topology remains exactly `DataQuality -> Features -> Prediction -> Mome
 
 Memory records store subject/relation/object, source observation IDs, evidence and contradiction counts, bounded confidence, status and `causal=false`. The older `LearningService` remains a descriptive memory summary. Phase-C `PatternLearningService` separately groups persisted independent cases by market, symbol, decision and market regime; model updates and causal claims remain zero. Prototype Evidence exposes a separate quality score. Reasoning separates caller confidence from bounded reasoning confidence and records assumptions and missing information. Self Critic stores severity and calibration warnings. Reprocessing the same observation or Pattern case is idempotent.
 
-Phase D.1 stores research questions as Hypotheses, never as facts. D.2 adds immutable Reasoning/Critic records and explicit incubation. D.3 adds reasoned local rejection and archival with append-only audit events. Terminal Hypotheses cannot receive new Evidence or analysis. Inspiration and Knowledge Graph promotion remain disconnected.
+Phase D.1 stores research questions as Hypotheses, never as facts. D.2 adds immutable Reasoning/Critic records and explicit incubation. D.3 adds reasoned local rejection and archival. D.4 adds a read-only Controlcenter for overview, search/filter, evidence, evaluation, analysis, critic, incubation and lifecycle history. Inspiration and Knowledge Graph promotion remain disconnected.
 
 ## Storage and commands
 
@@ -47,4 +48,4 @@ Pandorick `/api/v1/learning/summary` and `/api/v1/graph/overview` timed out duri
 
 Pattern Learning exists, but is explicitly triggered and limited to exact comparable-case groups. Incubation also intentionally has no automatic scheduler. Pattern and Evidence rules are illustrative descriptive thresholds, not calibrated probabilities.
 
-Hypothesis thresholds and confidence are illustrative rather than statistically calibrated. D.2 has no automatic data collection, Inspiration Engine, automatic scheduler or Knowledge Graph promotion.
+Hypothesis thresholds and confidence are illustrative rather than statistically calibrated. D.4 displays stored values but neither recalculates nor changes them. There is no automatic data collection, scheduler, Inspiration Engine or Knowledge Graph promotion.

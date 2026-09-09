@@ -23,5 +23,7 @@
 - `KP-D2-001`: Hypothesis Reasoning and Critic rules are transparent heuristics, not statistical inference or calibrated probability.
 - `KP-D2-002`: Hypothesis incubation is intentionally explicit; no scheduler marks or reactivates tasks automatically.
 - `KP-D2-003`: The Critic can warn about possible look-ahead or leakage but cannot prove a dataset is clean without a separate reviewed offline-data pipeline.
-- `KP-D3-001`: Lifecycle commands are local Python service operations; there is no interactive operator UI or CLI yet.
+- `KP-D3-001`: Lifecycle commands remain local Python service operations. The D.4 Controlcenter intentionally displays them but provides no interactive write controls or CLI.
 - `KP-D3-002`: Lifecycle events record a caller-supplied actor label, not an authenticated identity. This is acceptable only while commands remain local and the HTTP API remains GET-only.
+- `KP-D4-001`: The Controlcenter loads at most 100 Hypotheses, Evidence records and incubations per request. Pagination controls are not implemented yet.
+- `KP-D4-002`: The dashboard has no authentication and must remain on loopback. It is an operator view, not a remotely exposed administration interface.

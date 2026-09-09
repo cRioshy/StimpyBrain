@@ -3,8 +3,12 @@ from __future__ import annotations
 import json
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
+from pathlib import Path
 from threading import Thread
 from urllib.parse import parse_qs,urlparse
+
+_STATIC_DIR=Path(__file__).with_name("static")
+CONTROL_ASSETS={"/controlcenter":("controlcenter.html","text/html; charset=utf-8"),"/controlcenter/":("controlcenter.html","text/html; charset=utf-8"),"/controlcenter/app.css":("controlcenter.css","text/css; charset=utf-8"),"/controlcenter/app.js":("controlcenter.js","text/javascript; charset=utf-8")}
 
 class ReadOnlyAPI:
     def __init__(self,store,memory,learning,graph,worker=None): self.store,self.memory,self.learning,self.graph,self.worker=store,memory,learning,graph,worker
@@ -34,6 +38,7 @@ ROUTES={"/api/stimpy/health":"health","/api/stimpy/status":"status","/api/stimpy
 class _Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed=urlparse(self.path); name=ROUTES.get(parsed.path); hypothesis_id=None
+        if parsed.path in CONTROL_ASSETS: return self._send_asset(*CONTROL_ASSETS[parsed.path])
         parts=parsed.path.strip("/").split("/")
         if name is None and len(parts) in {4,5} and parts[:3]==["api","stimpy","hypotheses"]:
             hypothesis_id=parts[3]
@@ -59,6 +64,10 @@ class _Handler(BaseHTTPRequestHandler):
         except Exception as exc: self._send({"error":type(exc).__name__},HTTPStatus.INTERNAL_SERVER_ERROR)
     def do_POST(self): self._send({"error":"read-only api"},HTTPStatus.METHOD_NOT_ALLOWED)
     do_PUT=do_POST; do_PATCH=do_POST; do_DELETE=do_POST
+    def _send_asset(self,filename,content_type):
+        try: body=(_STATIC_DIR/filename).read_bytes()
+        except OSError: return self._send({"error":"not found"},HTTPStatus.NOT_FOUND)
+        self.send_response(HTTPStatus.OK); self.send_header("Content-Type",content_type); self.send_header("Content-Length",str(len(body))); self.send_header("Cache-Control","no-store"); self.send_header("Content-Security-Policy","default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"); self.send_header("X-Content-Type-Options","nosniff"); self.end_headers(); self.wfile.write(body)
     def _send(self,payload,status=HTTPStatus.OK):
         body=json.dumps(payload,ensure_ascii=True,default=str).encode(); self.send_response(status); self.send_header("Content-Type","application/json"); self.send_header("Content-Length",str(len(body))); self.send_header("Cache-Control","no-store"); self.end_headers(); self.wfile.write(body)
     def log_message(self,*args): pass
